@@ -7,7 +7,7 @@
  * This software is the proprietary information of Jens Elkner.
  * Use is subject to license terms.
  */
-package com.sendmail.milter;
+package de.ovgu.cs.milter4j;
 
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
@@ -24,7 +24,7 @@ import javax.xml.transform.stream.StreamSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.sendmail.milter.util.Misc;
+import de.ovgu.cs.milter4j.util.Misc;
 
 /**
  * Storage for the mail filter server configuration.

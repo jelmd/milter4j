@@ -7,13 +7,13 @@
  * This software is the proprietary information of Jens Elkner.
  * Use is subject to license terms.
  */
-package com.sendmail.milter.reply;
+package de.ovgu.cs.milter4j.reply;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
-import com.sendmail.milter.Modification;
-import com.sendmail.milter.util.Misc;
+import de.ovgu.cs.milter4j.Modification;
+import de.ovgu.cs.milter4j.util.Misc;
 
 /**
  * Change or delete a message header.

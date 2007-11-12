@@ -7,13 +7,13 @@
  * This software is the proprietary information of Jens Elkner.
  * Use is subject to license terms.
  */
-package com.sendmail.milter.reply;
+package de.ovgu.cs.milter4j.reply;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 
-import com.sendmail.milter.util.Misc;
+import de.ovgu.cs.milter4j.util.Misc;
 
 /**
  * Directly set the SMTP error reply code. Only 4XX and 5XX replies are accepted.
@@ -68,7 +68,7 @@ public class ReplyPacket
 	 * 		All others are silently ignored. Lines longer than {@link #MAX_LEN} 
 	 * 		({@value #MAX_LEN}) are silently truncated.
 	 * 		Must not contain none-printable characters or '%'.
-	 * @see com.sendmail.milter.util.Misc#getBytes(String)
+	 * @see de.ovgu.cs.milter4j.util.Misc#getBytes(String)
 	 */
 	public ReplyPacket(int reply, String xcode, String... messages) {
 		super(Type.REPLYCODE);

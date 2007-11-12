@@ -7,7 +7,7 @@
  * This software is the proprietary information of Jens Elkner.
  * Use is subject to license terms.
  */
-package com.sendmail.milter.util;
+package de.ovgu.cs.milter4j.util;
 
 import java.util.HashMap;
 import java.util.List;
@@ -20,8 +20,8 @@ import javax.mail.Message;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.sendmail.milter.MailFilter;
-import com.sendmail.milter.reply.Packet;
+import de.ovgu.cs.milter4j.MailFilter;
+import de.ovgu.cs.milter4j.reply.Packet;
 
 /**
  * A Simple Mail Filter, which just dumps requests fro the MTA.
@@ -40,7 +40,7 @@ public class RequestDumper
 	private String name;
 
 	/**
-	 * Constructor as described in the {@link com.sendmail.milter.Configuration} 
+	 * Constructor as described in the {@link de.ovgu.cs.milter4j.Configuration} 
 	 * contract.
 	 * @param param		ignored
 	 */

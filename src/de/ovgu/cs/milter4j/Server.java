@@ -7,7 +7,7 @@
  * This software is the proprietary information of Jens Elkner.
  * Use is subject to license terms.
  */
-package com.sendmail.milter;
+package de.ovgu.cs.milter4j;
 
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
@@ -30,8 +30,8 @@ import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.sendmail.milter.reply.Packet;
-import com.sendmail.milter.util.FutureTaskExecutor;
+import de.ovgu.cs.milter4j.reply.Packet;
+import de.ovgu.cs.milter4j.util.FutureTaskExecutor;
 
 /**
  * The Mail Filter server, which can be used as a multiplex for several

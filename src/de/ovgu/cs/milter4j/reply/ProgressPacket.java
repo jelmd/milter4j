@@ -7,7 +7,7 @@
  * This software is the proprietary information of Jens Elkner.
  * Use is subject to license terms.
  */
-package com.sendmail.milter.reply;
+package de.ovgu.cs.milter4j.reply;
 
 /**
  * Notifies the MTA that the filter is still working on a message, causing the 

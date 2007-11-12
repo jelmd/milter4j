@@ -7,7 +7,7 @@
  * This software is the proprietary information of Jens Elkner.
  * Use is subject to license terms.
  */
-package com.sendmail.milter;
+package de.ovgu.cs.milter4j;
 
 /**
  * Macro stages, i.e. when the MTA usually offers new or stage related

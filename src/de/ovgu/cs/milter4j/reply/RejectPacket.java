@@ -7,9 +7,9 @@
  * This software is the proprietary information of Jens Elkner.
  * Use is subject to license terms.
  */
-package com.sendmail.milter.reply;
+package de.ovgu.cs.milter4j.reply;
 
-import com.sendmail.milter.MacroStage;
+import de.ovgu.cs.milter4j.MacroStage;
 
 /**
  * For a connection-oriented Stage, reject this connection.  For a 

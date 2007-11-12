@@ -7,7 +7,7 @@
  * This software is the proprietary information of Jens Elkner.
  * Use is subject to license terms.
  */
-package com.sendmail.milter.util;
+package de.ovgu.cs.milter4j.util;
 
 import java.io.File;
 import java.io.FileInputStream;

@@ -7,7 +7,7 @@
  * This software is the proprietary information of Jens Elkner.
  * Use is subject to license terms.
  */
-package com.sendmail.milter;
+package de.ovgu.cs.milter4j;
 
 /**
  * Known sendmail macros with a static name. Just for information right now 

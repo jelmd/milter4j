@@ -7,7 +7,7 @@
  * This software is the proprietary information of Jens Elkner.
  * Use is subject to license terms.
  */
-package com.sendmail.milter;
+package de.ovgu.cs.milter4j;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -35,19 +35,19 @@ import javax.mail.Header;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.sendmail.milter.cmd.BodyPacket;
-import com.sendmail.milter.cmd.ConnectPacket;
-import com.sendmail.milter.cmd.HeaderPacket;
-import com.sendmail.milter.cmd.HeloPacket;
-import com.sendmail.milter.cmd.MacroPacket;
-import com.sendmail.milter.cmd.MailFromPacket;
-import com.sendmail.milter.cmd.RecipientToPacket;
-import com.sendmail.milter.cmd.Type;
-import com.sendmail.milter.cmd.UnknownCmdPacket;
-import com.sendmail.milter.reply.AcceptPacket;
-import com.sendmail.milter.reply.NegotiationPacket;
-import com.sendmail.milter.reply.Packet;
-import com.sendmail.milter.reply.SkipPacket;
+import de.ovgu.cs.milter4j.cmd.BodyPacket;
+import de.ovgu.cs.milter4j.cmd.ConnectPacket;
+import de.ovgu.cs.milter4j.cmd.HeaderPacket;
+import de.ovgu.cs.milter4j.cmd.HeloPacket;
+import de.ovgu.cs.milter4j.cmd.MacroPacket;
+import de.ovgu.cs.milter4j.cmd.MailFromPacket;
+import de.ovgu.cs.milter4j.cmd.RecipientToPacket;
+import de.ovgu.cs.milter4j.cmd.Type;
+import de.ovgu.cs.milter4j.cmd.UnknownCmdPacket;
+import de.ovgu.cs.milter4j.reply.AcceptPacket;
+import de.ovgu.cs.milter4j.reply.NegotiationPacket;
+import de.ovgu.cs.milter4j.reply.Packet;
+import de.ovgu.cs.milter4j.reply.SkipPacket;
 
 /**
  * A Worker (mail filter proxy), which handles a single connection initiated by 
@@ -66,7 +66,7 @@ public class Worker implements Comparable<Worker> {
 	
 	/** the key which will be added to the macro map internally, if the MTA 
 	 * currently connected, understands 
-	 * {@link com.sendmail.milter.reply.Type#SKIP}
+	 * {@link de.ovgu.cs.milter4j.reply.Type#SKIP}
 	 */
 	public static final String MTA_CAN_SKIP_KEY = "MTA_UNDERSTANDS_SKIP";
 	
@@ -360,7 +360,7 @@ public class Worker implements Comparable<Worker> {
 							break;
 						}
 						Packet p = i.next();
-						if (p.getType() == com.sendmail.milter.reply.Type.QUARANTINE)
+						if (p.getType() == de.ovgu.cs.milter4j.reply.Type.QUARANTINE)
 						{
 							if (quarantined) {
 								i.remove();
@@ -389,7 +389,7 @@ public class Worker implements Comparable<Worker> {
 				while (!(stop || tmpRes.isEmpty())) {
 					Packet p = tmpRes.poll();
 					if (p != null) {
-						com.sendmail.milter.reply.Type r = p.getType();
+						de.ovgu.cs.milter4j.reply.Type r = p.getType();
 						switch (r) {
 							case REJECT:
 							case DISCARD:

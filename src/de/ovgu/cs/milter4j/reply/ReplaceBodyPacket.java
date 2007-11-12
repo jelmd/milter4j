@@ -7,11 +7,11 @@
  * This software is the proprietary information of Jens Elkner.
  * Use is subject to license terms.
  */
-package com.sendmail.milter.reply;
+package de.ovgu.cs.milter4j.reply;
 
 import java.io.IOException;
 
-import com.sendmail.milter.Modification;
+import de.ovgu.cs.milter4j.Modification;
 /**
  * Replaces the body of the current message. If sent more than once, subsequent 
  * packets result in data being appended to the new body.
@@ -38,7 +38,7 @@ public class ReplaceBodyPacket
 	 * 		RFC 822/RFC 2047.
 	 * @see javax.mail.internet.MimeUtility#encodeText(String, String, String)
 	 * @see javax.mail.internet.MimeBodyPart
-	 * @see com.sendmail.milter.util.Misc#getBytes(String)
+	 * @see de.ovgu.cs.milter4j.util.Misc#getBytes(String)
 	 */
 	public ReplaceBodyPacket(byte[] data) {
 		super(Type.REPLBODY);

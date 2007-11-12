@@ -7,13 +7,13 @@
  * This software is the proprietary information of Jens Elkner.
  * Use is subject to license terms.
  */
-package com.sendmail.milter.reply;
+package de.ovgu.cs.milter4j.reply;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.WritableByteChannel;
 
-import com.sendmail.milter.util.Misc;
+import de.ovgu.cs.milter4j.util.Misc;
 
 /**
  * A paket, which can be send as a reply to a MTA milter command paket.

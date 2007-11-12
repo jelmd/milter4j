@@ -7,11 +7,11 @@
  * This software is the proprietary information of Jens Elkner.
  * Use is subject to license terms.
  */
-package com.sendmail.milter;
+package de.ovgu.cs.milter4j;
 
 import java.util.EnumSet;
 
-import com.sendmail.milter.cmd.Type;
+import de.ovgu.cs.milter4j.cmd.Type;
 
 
 /**

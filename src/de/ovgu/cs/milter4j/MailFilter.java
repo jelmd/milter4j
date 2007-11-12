@@ -7,7 +7,7 @@
  * This software is the proprietary information of Jens Elkner.
  * Use is subject to license terms.
  */
-package com.sendmail.milter;
+package de.ovgu.cs.milter4j;
 
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -17,9 +17,9 @@ import java.util.Set;
 import javax.mail.Header;
 import javax.mail.Message;
 
-import com.sendmail.milter.cmd.Type;
-import com.sendmail.milter.reply.ContinuePacket;
-import com.sendmail.milter.reply.Packet;
+import de.ovgu.cs.milter4j.cmd.Type;
+import de.ovgu.cs.milter4j.reply.ContinuePacket;
+import de.ovgu.cs.milter4j.reply.Packet;
 
 /**
  * An abstract mail filter, which actually handles the MTA requests.
@@ -56,13 +56,13 @@ import com.sendmail.milter.reply.Packet;
  * If a milter returns one of the following packet types, the managing server
  * sends it back to the MTA immediately.
  * <ul>
- * 		<li>{@link com.sendmail.milter.reply.Type#TEMPFAIL}</li>
- * 		<li>{@link com.sendmail.milter.reply.Type#REJECT}</li>
- * 		<li>{@link com.sendmail.milter.reply.Type#DISCARD}</li>
- * 		<li>{@link com.sendmail.milter.reply.Type#REPLYCODE}</li>
- * 		<li>{@link com.sendmail.milter.reply.Type#CONN_FAIL} if supported by 
+ * 		<li>{@link de.ovgu.cs.milter4j.reply.Type#TEMPFAIL}</li>
+ * 		<li>{@link de.ovgu.cs.milter4j.reply.Type#REJECT}</li>
+ * 		<li>{@link de.ovgu.cs.milter4j.reply.Type#DISCARD}</li>
+ * 		<li>{@link de.ovgu.cs.milter4j.reply.Type#REPLYCODE}</li>
+ * 		<li>{@link de.ovgu.cs.milter4j.reply.Type#CONN_FAIL} if supported by 
  * 			the MTA (most do not)</li>
- * 		<li>{@link com.sendmail.milter.reply.Type#SKIP} if returned by 
+ * 		<li>{@link de.ovgu.cs.milter4j.reply.Type#SKIP} if returned by 
  * 			{@link #doBody(byte[])}, supported by the MTA and no other managed
  * 			filter needs further body chunks. Anyway, the managing server makes
  * 			sure, that the filter, which sent that packet, will not receive
@@ -71,9 +71,9 @@ import com.sendmail.milter.reply.Packet;
  * The following commands are reserved for use by the managing server and thus
  * are ignored.
  * <ul>
- * 		<li>{@link com.sendmail.milter.reply.Type#OPTNEG}</li>
- * 		<li>{@link com.sendmail.milter.reply.Type#SETSYMLIST}</li>
- * 		<li>{@link com.sendmail.milter.reply.Type#SHUTDOWN}</li>
+ * 		<li>{@link de.ovgu.cs.milter4j.reply.Type#OPTNEG}</li>
+ * 		<li>{@link de.ovgu.cs.milter4j.reply.Type#SETSYMLIST}</li>
+ * 		<li>{@link de.ovgu.cs.milter4j.reply.Type#SHUTDOWN}</li>
  * </ul>
  * 
  * @see Configuration
