@@ -1,0 +1,28 @@
+/**
+ * $Id$ 
+ * 
+ * Copyright (c) 2005-2007 Jens Elkner.
+ * All Rights Reserved.
+ *
+ * This software is the proprietary information of Jens Elkner.
+ * Use is subject to license terms.
+ */
+package com.sendmail.milter.cmd;
+
+/**
+ * QUIT.
+ * 
+ * @author 	Jens Elkner
+ * @version	$Revision$
+ */
+public class QuitPacket
+	extends Command
+{
+	/**
+	 * Create the package.
+	 * @param nc	whether to quit and prepare for a new connection.
+	 */
+	public QuitPacket(boolean nc) {
+		super(nc ? Type.QUIT_NC : Type.QUIT);
+	}
+}
