@@ -127,25 +127,29 @@ public class Server extends Thread implements PropertyChangeListener {
 				}
 			}
 			if (queue.isEmpty() && key.isValid()) {
+				key.selector().wakeup();
 				key.interestOps(SelectionKey.OP_READ);
 			}
 		}
 	}
 
 	private void read(SelectionKey key) throws IOException {
-		Object w = key.attachment();
-		if (w != null) {
-			boolean tryNext = true;
-			while (tryNext) {
-				if (log.isDebugEnabled()) {
-					log.debug("{} reading ...", w);
+			Object w = key.attachment();
+			if (w != null) {
+				synchronized (workers) {
+					key.interestOps(0);
+					boolean tryNext = true;
+					while (tryNext) {
+						if (log.isDebugEnabled()) {
+							log.debug("{} reading ...", w);
+						}
+						tryNext = ((Worker) w).read(key);
+						if (log.isDebugEnabled()) {
+							log.debug("{} done (full paket: {})", w, tryNext);
+						}
+					}
 				}
-				tryNext = ((Worker) w).read(key);
-				if (log.isDebugEnabled()) {
-					log.debug("{} done (full paket: {})", w, tryNext);
-				}
-			}
-		}		
+			}		
 	}
 
 	private void accept(SelectionKey key) throws IOException {
@@ -246,6 +250,7 @@ public class Server extends Thread implements PropertyChangeListener {
 					Object o = key.attachment();
 					((Worker) o).cleanup(false, null);
 					log.debug("connection closed");
+					key.selector().wakeup();
 				}
 				if (log.isDebugEnabled()) {
 					log.debug("method()", e);

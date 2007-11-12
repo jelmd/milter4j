@@ -64,6 +64,9 @@ public class Worker implements Comparable<Worker> {
 	private static final Logger log = LoggerFactory.getLogger(Worker.class);
 	private static final AtomicInteger instCounter = new AtomicInteger();
 	
+	/** max. allowed size of the data section of a packet */
+	public static final int MAX_DATASIZE = 64 * 1024;
+	
 	/** the key which will be added to the macro map internally, if the MTA 
 	 * currently connected, understands 
 	 * {@link de.ovgu.cs.milter4j.reply.Type#SKIP}
@@ -189,7 +192,7 @@ public class Worker implements Comparable<Worker> {
 	 */
 	public void shutdown() {
 		canUse = false;
-		sendQueue.clear();
+		packageType = Type.QUIT;
 		cleanup(false, null);
 		filters.clear();
 		cmds2handle.clear();
@@ -248,7 +251,7 @@ public class Worker implements Comparable<Worker> {
 		}
 		if (count == -1) {
 			sc.close();
-			log.debug("connection closed");
+			log.debug("{} connection closed", this);
 		}
 	}
 
@@ -317,8 +320,8 @@ public class Worker implements Comparable<Worker> {
 			log.debug("{} adding {} to write queue", this, p[i]);
 			sendQueue.add(p[i]);
 		}
-		key.interestOps(key.interestOps() | SelectionKey.OP_WRITE);
 		key.selector().wakeup();
+		key.interestOps(key.interestOps() | SelectionKey.OP_WRITE);
 	}
 
  	abstract class MilterTask implements Callable<MilterTask> {
@@ -491,15 +494,16 @@ public class Worker implements Comparable<Worker> {
 	 * @param key	not yet used
 	 */
 	void cleanup(boolean forNewMessage, SelectionKey key) {
-		log.debug("{} cleaning up ...");
+		log.debug("{} cleaning up ...", this);
 		for (Future<?> f : runningTasks) {
 			f.cancel(true);
 		}
+		sendQueue.clear();
 		allMacros.clear();
 		if (forNewMessage) {
 			allMacros.putAll(connectionMacros);
 			if (filters.size() > 0) {
-				MilterTask r = new MilterTask(packageType, filters, key) {
+				MilterTask r = new MilterTask(Type.ABORT, filters, key) {
 					@Override
 					void callMilter(MailFilter f, List<Packet> res) {
 						f.doAbort();
@@ -509,7 +513,7 @@ public class Worker implements Comparable<Worker> {
 			}
 		} else {
 			if (filters.size() > 0) {
-				MilterTask r = new MilterTask(packageType, filters, key) {
+				MilterTask r = new MilterTask(Type.QUIT, filters, key) {
 					@Override
 					void callMilter(MailFilter f, List<Packet> res) {
 						f.doQuit();
@@ -527,9 +531,11 @@ public class Worker implements Comparable<Worker> {
 		body = null;
 		data = null;
 		header.clear();
-		data.clear();
+		if (data != null) {
+			data.clear();
+		}
 		buf = header;
-		log.debug("{} done ...");
+		log.debug("{} done ...", this);
 	}
 
 	private void handlePaket(SelectionKey skey) {
@@ -744,9 +750,10 @@ public class Worker implements Comparable<Worker> {
 			try {
 				packageType = Type.get(header.get());
 			} catch (Exception e) {
-				log.warn(e.getLocalizedMessage());
-				key.channel().close();
-				packageType = null;
+				throw new IOException(e.getLocalizedMessage());
+			}
+			if (len < 0 || len > MAX_DATASIZE) {
+				throw new IOException("Invalid packet size encountered");
 			}
 			header.clear();
 			log.debug("Receiving {} with 1 + {} bytes of data", packageType, len-1);
