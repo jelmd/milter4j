@@ -15,13 +15,9 @@ import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.net.SocketAddress;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.SynchronousQueue;
@@ -30,7 +26,6 @@ import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import de.ovgu.cs.milter4j.reply.Packet;
 import de.ovgu.cs.milter4j.util.FutureTaskExecutor;
 
 /**
@@ -48,8 +43,7 @@ public class Server extends Thread implements PropertyChangeListener {
 		.getLogger(Server.class);
 	private Configuration cfg;
 	
-//	private ServerSocketChannel socketChannel;
-	private Selector socketSelector;
+	private ServerSocketChannel socketChannel;
 	private boolean socketChanged;
 	private boolean filtersChanged;
 	
@@ -84,121 +78,9 @@ public class Server extends Thread implements PropertyChangeListener {
 				}
 			}
 		}
-		Worker w = new Worker(filters, executor);
+		Worker w = new Worker(filters);
 		workers.add(w);
 		return w;
-	}
-
-	private void write(SelectionKey key) {
-		Object o = key.attachment();
-		if (o != null) {
-			Worker w = (Worker) o;
-			SocketChannel sc = (SocketChannel) key.channel();
-			// we assume, packets are small and can be send at once
-			ConcurrentLinkedQueue<Packet> queue = 
-				w.getQueue2send();
-			Packet p;
-			while ((p = queue.peek()) != null) {
-				boolean ok = false;
-				try {
-					if (log.isDebugEnabled()) {
-						log.debug("{} sending {} ...", w, p);
-					}
-					ok = p.send(sc);
-					log.debug("{} done", w, p);
-				} catch (Exception e) {
-					queue.clear();
-					try { 
-						key.channel().close(); 
-					} catch (Exception x) {
-						// ignore
-					}
-					log.warn(e.getLocalizedMessage());
-					if (log.isDebugEnabled()) {
-						log.debug("run - key canceled", e);
-					}
-				}
-				if (ok) {
-					queue.poll();
-				} else {
-					// give the socket a little bit time to flush
-					// its buffers
-					break;
-				}
-			}
-			if (queue.isEmpty() && key.isValid()) {
-				key.selector().wakeup();
-				key.interestOps(SelectionKey.OP_READ);
-			}
-		}
-	}
-
-	private void read(SelectionKey key) throws IOException {
-			Object w = key.attachment();
-			if (w != null) {
-				synchronized (workers) {
-					key.interestOps(0);
-					boolean tryNext = true;
-					while (tryNext) {
-						if (log.isDebugEnabled()) {
-							log.debug("{} reading ...", w);
-						}
-						tryNext = ((Worker) w).read(key);
-						if (log.isDebugEnabled()) {
-							log.debug("{} done (full paket: {})", w, tryNext);
-						}
-					}
-				}
-			}		
-	}
-
-	private void accept(SelectionKey key) throws IOException {
-		ServerSocketChannel ssch = (ServerSocketChannel) key.channel();
-		SocketChannel sc = ssch.accept();
-		sc.configureBlocking(false);
-		Worker w = getFreeWorker();
-		sc.register(socketSelector, SelectionKey.OP_READ, w);
-		if (log.isDebugEnabled()) {
-			log.debug("Worker {} registered for accept()", w.getName());
-		}
-	}
-
-	private void debugKey(SelectionKey key) {
-		if (!key.isValid()) {
-			log.debug("State: invalid");
-			return;
-		}
-		StringBuilder buf = new StringBuilder("State: ");
-		int i = key.interestOps();
-		if ((i & SelectionKey.OP_ACCEPT) > 0) {
-			buf.append("accept,");
-		}
-		if ((i & SelectionKey.OP_CONNECT) > 0) {
-			buf.append("connect,");
-		}
-		if ((i & SelectionKey.OP_READ) > 0) {
-			buf.append("read,");
-		}
-		if ((i & SelectionKey.OP_WRITE) > 0) {
-			buf.append("write,");
-		}
-		buf.append("  ");
-		if (key.isAcceptable()) {
-			buf.append("acceptable,");
-		}
-		if (key.isConnectable()) {
-			buf.append("connectable,");
-		}
-		if (key.isReadable()) {
-			buf.append("readable,");
-		}
-		if (key.isWritable()) {
-			buf.append("writable,");
-		}
-		if (key.isValid()) {
-			buf.append("valid");
-		}
-		log.debug(buf.toString());
 	}
 
 	/**
@@ -207,51 +89,25 @@ public class Server extends Thread implements PropertyChangeListener {
 	@Override
 	public void run() {
 		while (true) {
-			if (filtersChanged || socketChanged || !socketSelector.isOpen()) {
+			if (filtersChanged || socketChanged || !socketChannel.isOpen()) {
 				reconfigure();
 			}
-			if (socketSelector == null) {
+			if (socketChannel == null) {
 				log.warn("Unable to open socket - terminating");
 				return;
 			}
-			SelectionKey key = null;
 			try {
+				SocketChannel sc = socketChannel.accept();
+				sc.configureBlocking(true);
+				Worker w = getFreeWorker();
+				w.prepare(sc);
+				executor.submit(w);
 				if (log.isDebugEnabled()) {
-					log.debug("Socket selector is open: " 
-						+ socketSelector.isOpen());
-				}
-				// Wait for an event one of the registered channels
-				socketSelector.select();
-				// Iterate over the set of keys for which events are available
-				Iterator<SelectionKey> keys = 
-					socketSelector.selectedKeys().iterator();
-				while (keys.hasNext()) {
-					key = keys.next();
-					keys.remove();
-					if (!key.isValid()) {
-						continue;
-					}
-					// Check what event is available and deal with it
-					if (key.isAcceptable()) {
-						accept(key);
-					} else if (key.isWritable()) {
-						write(key);
-					} else if (key.isReadable()) {
-						read(key);
-					}
-					if (log.isDebugEnabled()) {
-						debugKey(key);
-					}
+					log.debug("Worker {} registered for accept()", 
+						w.getName());
 				}
 			} catch (IOException e) {
 				log.warn(e.getLocalizedMessage());
-				if (key != null) {
-					try { key.channel().close(); } catch (IOException e1) { /**/ }
-					Object o = key.attachment();
-					((Worker) o).cleanup(false, null);
-					log.debug("connection closed");
-					key.selector().wakeup();
-				}
 				if (log.isDebugEnabled()) {
 					log.debug("method()", e);
 				}
@@ -263,9 +119,9 @@ public class Server extends Thread implements PropertyChangeListener {
 	 * Initialize Socket, Channel and Selector
 	 */
 	private void initSocket() {
-		if (socketSelector != null && socketSelector.isOpen()) {
+		if (socketChannel != null && socketChannel.isOpen()) {
 			try {
-				socketSelector.close();
+				socketChannel.close();
 			} catch (IOException e) {
 				if (log.isDebugEnabled()) {
 					log.debug("method()", e);
@@ -273,23 +129,19 @@ public class Server extends Thread implements PropertyChangeListener {
 			}
 		}
 		SocketAddress addr = cfg.getAddress();
-		ServerSocketChannel socketChannel = null;
+		ServerSocketChannel ssc = null;
 		try {
-			socketSelector = Selector.open();
-			socketChannel = ServerSocketChannel.open();
-			socketChannel.configureBlocking(false);
-			socketChannel.socket().bind(addr);
-			socketChannel.register(socketSelector, SelectionKey.OP_ACCEPT);
+			ssc = ServerSocketChannel.open();
+			ssc.configureBlocking(true);
+			ssc.socket().bind(addr);
+			socketChannel = ssc;
 		} catch (IOException e) {
 			log.warn(e.getLocalizedMessage());
 			if (log.isDebugEnabled()) {
 				log.debug("method()", e);
 			}
-			if (socketChannel != null) {
-				try { socketChannel.close(); } catch (Exception x) { /* ignore */ }
-			}
-			if (socketSelector != null) {
-				try { socketSelector.close(); } catch (Exception x) { /* ignore */ }
+			if (ssc != null) {
+				try { ssc.close(); } catch (Exception x) { /* ignore */ }
 			}
 		}
 	}

@@ -12,22 +12,15 @@ package de.ovgu.cs.milter4j;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
-import java.util.concurrent.FutureTask;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.mail.Header;
@@ -59,7 +52,7 @@ import de.ovgu.cs.milter4j.reply.SkipPacket;
  * @author 	Jens Elkner
  * @version	$Revision$
  */
-public class Worker implements Comparable<Worker> {
+public class Worker implements Comparable<Worker>, Callable<Object> {
 
 	private static final Logger log = LoggerFactory.getLogger(Worker.class);
 	private static final AtomicInteger instCounter = new AtomicInteger();
@@ -81,12 +74,11 @@ public class Worker implements Comparable<Worker> {
 	private String name;
 
 	// stuff to manage filters
-	private ExecutorService threadPool;
 	ArrayList<MailFilter> filters;
 	HashSet<MailFilter> skipList;
 	HashSet<MailFilter> acceptList;
-	HashSet<Future<?>> runningTasks = new HashSet<Future<?>>();
-	ConcurrentLinkedQueue<Packet> sendQueue;
+	boolean quarantined;
+	private SocketChannel channel;
 	
 	// stuff to manage data
 	private EnumSet<Type> cmds2handle;	
@@ -111,10 +103,8 @@ public class Worker implements Comparable<Worker> {
 	/**
 	 * Creates a new worker, which manages the given filters.
 	 * @param filters		mail filter to manage
-	 * @param threadPool	thread pool to use for execution
 	 */
-	public Worker(ArrayList<MailFilter> filters, ExecutorService threadPool) {
-		this.threadPool = threadPool;
+	public Worker(ArrayList<MailFilter> filters) {
 		createTime = System.currentTimeMillis();
 		acceptList = new HashSet<MailFilter>(filters.size());
 		skipList = new HashSet<MailFilter>(filters.size());
@@ -131,11 +121,15 @@ public class Worker implements Comparable<Worker> {
 	}
 	
 	/**
-	 * Get the queue with the packages to send
-	 * @return	a queue, which is usually not empty.
+	 * Prepare this worker to handle MTA essages related to a single mail client
+	 * @param channel	channel to use for reading and writing (always a 
+	 * 		blocking channel)
 	 */
-	public ConcurrentLinkedQueue<Packet> getQueue2send() {
-		return sendQueue;
+	public void prepare(SocketChannel channel) {
+		if (this.channel != null) {
+			log.warn("Old socket not cleaned up");
+		}
+		this.channel = channel;
 	}
 
 	/**
@@ -182,7 +176,6 @@ public class Worker implements Comparable<Worker> {
 			p.setMacros(stages[i], macros2negotiate.get(stages[i]));
 		}
 		macros2negotiate = p.getStageMacros();
-		sendQueue = new ConcurrentLinkedQueue<Packet>();
 		buf = header;
 		canUse = true;
 	}
@@ -193,15 +186,13 @@ public class Worker implements Comparable<Worker> {
 	public void shutdown() {
 		canUse = false;
 		packageType = Type.QUIT;
-		cleanup(false, null);
+		cleanup(false);
 		filters.clear();
 		cmds2handle.clear();
 		mods2handle.clear();
 		mtaShouldSentRejected = false;
 		assembleMessage4.clear();
 		macros2negotiate.clear();
-		sendQueue.clear();
-		runningTasks.clear();
 	}
 
 	/**
@@ -210,48 +201,26 @@ public class Worker implements Comparable<Worker> {
 	 * 		or some a managed milter is still busy.
 	 */
 	public boolean isReady() {
-		return canUse && isIdle();
+		return canUse && channel == null;
 	}
 	
-	/**
-	 * Check, whether there are any filters managed by this worker, are still
-	 * doing some work.
-	 * @return <code>true</code> if idle.
-	 */
-	public boolean isIdle() {
-		if (runningTasks.size() == 0) {
-			return true;
-		}
-		Iterator<Future<?>> i = runningTasks.iterator();
-		while(i.hasNext()) {
-			Future<?> f = i.next();
-			if (f.isDone()) {
-				i.remove();
-			} else {
-				return false;
-			}
-		}
-		return true;
-	}
-
 	/**
 	 * Fille the buffer from the key's channel
 	 * @param key	channel provider
 	 * @param buf	buffer
 	 * @throws IOException on read error
 	 */
-	private void fillBuffer(SelectionKey key, ByteBuffer buf) throws IOException {
+	private void fillBuffer(ByteBuffer buf) throws IOException {
 		if (buf.capacity() == 0) {
 			return;
 		}
-		SocketChannel sc = (SocketChannel) key.channel();
 		int count = 0;
-		while (buf.hasRemaining() && ((count = sc.read(buf)) > 0)) {
+		while (buf.hasRemaining() && ((count = channel.read(buf)) > 0)) {
 			// read again
 		}
 		if (count == -1) {
-			sc.close();
-			log.debug("{} connection closed", this);
+			channel.close();
+			log.debug("{} connection closed by MTA", this);
 		}
 	}
 
@@ -274,198 +243,7 @@ public class Worker implements Comparable<Worker> {
 		p.setStageMacros(macros2negotiate);
 	}
 
-	class MilterFuture<V extends MilterTask> extends FutureTask<V> {
-		private MilterTask callable;
-		private Set<?> taskList;
-
-		/**
-		 * Just a wrapper around FutureTask, which will execute a MilterTask
-		 * @param callable	a MilterTask
-		 * @param taskList where to store this task
-		 */
-		public MilterFuture(Callable<V> callable, Set<Future<?>> taskList) {
-			super(callable);
-			taskList.add(this);
-			this.taskList = taskList;
-		}
-		
-		/**
-		 * {@inheritDoc}
-		 */
-		@Override
-		public boolean cancel(boolean mayInterruptIfRunning) {
-			// avoid sending uneccessary stuff 
-			callable.stop = true;
-			return super.cancel(mayInterruptIfRunning);
-		}
-
-		/**
-		 * Removes this task from the list of running tasks 
-		 */
-		@Override
-		protected void done() {
-			taskList.remove(this);
-			taskList = null;
-			callable = null;
-		}
-	}
-
 	/**
-	 * Just puts the packets into a chain and notifies the appropriate selector.
-	 * @param key	key to use for notify
-	 * @param p		packet to queue
-	 */
-	void send(SelectionKey key, Packet... p) {
-		for (int i=0; i < p.length; i++) {
-			log.debug("{} adding {} to write queue", this, p[i]);
-			sendQueue.add(p[i]);
-		}
-		key.selector().wakeup();
-		key.interestOps(key.interestOps() | SelectionKey.OP_WRITE);
-	}
-
- 	abstract class MilterTask implements Callable<MilterTask> {
-		private final Logger log = LoggerFactory
-			.getLogger(MilterTask.class);
-		Type cmd;
-		Packet result;
-		ArrayList<Packet> results;
-		boolean stop;
-		ArrayList<MailFilter> todo;
-		SelectionKey skey;
-
-		/**
-		 * Create a task which calls a milters
-		 * @param cmd	current command to handle
-		 * @param f 	mail filter to process
-		 * @param sc channel to use for sending replies
-		 */
-		public MilterTask(Type cmd, ArrayList<MailFilter> f, SelectionKey sc) {
-			this.cmd = cmd;
-			stop = false;
-			todo = f;
-			this.skey = sc;
-		}
-
-		/**
-		 * {@inheritDoc}
-		 */
-		public MilterTask call() {
-			result = null;
-			boolean abortORquit = cmd == Type.ABORT || cmd == Type.QUIT;
-			LinkedList<Packet> tmpRes = new LinkedList<Packet>();
-			if (cmd == Type.BODYEOB) {
-				boolean quarantined = false;
-				if (toSend != null && !toSend.isEmpty()) {
-					Iterator<Packet> i = toSend.iterator();
-					while (i.hasNext()) {
-						if (stop) {
-							break;
-						}
-						Packet p = i.next();
-						if (p.getType() == de.ovgu.cs.milter4j.reply.Type.QUARANTINE)
-						{
-							if (quarantined) {
-								i.remove();
-							}
-							quarantined = true;
-						}
-					}
-					send(skey, toSend.toArray(new Packet[toSend.size()]));
-					toSend.clear();
-				}
-			}
-			for (MailFilter f : todo) {
-				tmpRes.clear();
-				if (stop && !abortORquit) {
-					// always process abort and quit
-					break;
-				}
-				try {
-					callMilter(f, tmpRes);
-				} catch (Exception e) {
-					log.warn(e.getLocalizedMessage());
-					if (log.isDebugEnabled()) {
-						log.debug("run", e);
-					}
-				}
-				while (!(stop || tmpRes.isEmpty())) {
-					Packet p = tmpRes.poll();
-					if (p != null) {
-						de.ovgu.cs.milter4j.reply.Type r = p.getType();
-						switch (r) {
-							case REJECT:
-							case DISCARD:
-							case TEMPFAIL:
-							case REPLYCODE:
-								result = p;
-								toSend.clear();
-								stop = true;
-								break;
-							case SKIP:
-								skipList.add(f);
-								break;
-							case ACCEPT:
-								acceptList.add(f);
-								break;
-							case OPTNEG:
-							case SETSYMLIST:
-							case CONN_FAIL:
-								log.warn("filter {} replied with illegal packet {}",
-									f.getName(), r);
-								break;
-							case ADDHEADER:		// EOM
-							case ADDRCPT:		// EOM
-							case ADDRCPT_PAR:	// EOM
-							case CHGFROM:		// EOM
-							case CHGHEADER:		// EOM
-							case DELRCPT:		// EOM
-							case INSHEADER:		// EOM
-							case REPLBODY:		// EOM
-							case QUARANTINE:	// EOM
-							case PROGRESS:		// EOM
-								if (cmd == Type.BODYEOB) {
-									send(skey, p);
-								} else {
-									toSend.add(p);
-								}
-								break;
-							case CONTINUE:
-							case SHUTDOWN:
-								break;
-							default:
-								log.warn("filter {} replied with unknown packet {}",
-									f.getName(), r);
-						}
-					}
-				}
-			}
-			if (abortORquit) {
-				toSend.clear();
-				if (cmd == Type.QUIT || cmd == Type.QUIT_NC) {
-					try { skey.channel().close(); } catch (Exception e) { /* */ }
-				}
-				return this;
-			}
-			if (result == null && cmd != Type.MACRO) {
-				if (acceptList.containsAll(filters)) {
-					result = new AcceptPacket();
-				} else if (skipList.containsAll(filters)) {
-					result = new SkipPacket();
-				} else {
-					result = MailFilter.CONTINUE;
-				}
-			}
-			if (result != null && !stop) {
-				send(skey, result);
-			}
-			return this;
-		}
-		
-		abstract void callMilter(MailFilter f, List<Packet> res);
-	}
-	
- 	/**
  	 * Check, whether we need to create a new task process the given command
  	 * @param cmd	comand to act on
  	 * @return a possibly empty list of filters, which need to be run
@@ -491,37 +269,33 @@ public class Worker implements Comparable<Worker> {
 	 * Clean up the stack and prepare to handle a new mail connection/message
 	 * @param forNewMessage	if <code>false</code>, drop meta information from
 	 * 		helo/connect as well
-	 * @param key	not yet used
 	 */
-	void cleanup(boolean forNewMessage, SelectionKey key) {
-		log.debug("{} cleaning up ...", this);
-		for (Future<?> f : runningTasks) {
-			f.cancel(true);
+	void cleanup(boolean forNewMessage) {
+		if (channel == null) {
+			// avoid multiple invocations
+			return;
 		}
-		sendQueue.clear();
+		log.debug("{} cleaning up ...", this);
 		allMacros.clear();
 		if (forNewMessage) {
 			allMacros.putAll(connectionMacros);
 			if (filters.size() > 0) {
-				MilterTask r = new MilterTask(Type.ABORT, filters, key) {
-					@Override
-					void callMilter(MailFilter f, List<Packet> res) {
-						f.doAbort();
-					}
-				};
-				threadPool.submit(new MilterFuture<MilterTask>(r, runningTasks));
+				for (MailFilter f : filters) {
+					f.doAbort();
+				}
 			}
 		} else {
 			if (filters.size() > 0) {
-				MilterTask r = new MilterTask(Type.QUIT, filters, key) {
-					@Override
-					void callMilter(MailFilter f, List<Packet> res) {
+				if (filters.size() > 0) {
+					for (MailFilter f : filters) {
 						f.doQuit();
 					}
-				};
-				threadPool.submit(new MilterFuture<MilterTask>(r, runningTasks));
+				}
 			}
 			connectionMacros.clear();
+			try { channel.close(); } catch (IOException e) { /* ignore */ }
+			log.debug("channel closed");
+			channel = null;
 		}
 		toSend.clear();
 		lastMacros.clear();
@@ -531,28 +305,103 @@ public class Worker implements Comparable<Worker> {
 		body = null;
 		data = null;
 		header.clear();
-		if (data != null) {
-			data.clear();
-		}
 		buf = header;
 		log.debug("{} done ...", this);
 	}
 
-	private void handlePaket(SelectionKey skey) {
-		MilterTask r = null;
+	/**
+	 * Handle the results of a filter call
+	 * @param filter	the filter, which produced the given packets
+	 * @param cmd		the command, that was used for filter invocation 
+	 * @param res	answer packets produced by a mail filter
+	 * @return <code>true</code> if the last packet has been sent and the 
+	 * 		connection can be closed.
+	 * @throws IOException on I/O error
+	 */
+	private boolean handleResult(MailFilter filter, Type cmd, Packet... res) 
+		throws IOException 
+	{
+		Packet result = null;
+		boolean stop = false;
+		for (Packet p : res) {
+			if (result == null && p != null && !stop) {
+				de.ovgu.cs.milter4j.reply.Type r = p.getType();
+				switch (r) {
+					case REJECT:
+					case DISCARD:
+					case TEMPFAIL:
+					case REPLYCODE:
+						result = p;
+						toSend.clear();
+						stop = true;
+						break;
+					case SKIP:
+						skipList.add(filter);
+						if (skipList.containsAll(filters)) {
+							result = new SkipPacket();
+							stop = true;
+						}
+						break;
+					case ACCEPT:
+						acceptList.add(filter);
+						if (acceptList.containsAll(filters)) {
+							result = new AcceptPacket();
+							stop = true;
+						}
+						break;
+					case OPTNEG:
+					case SETSYMLIST:
+					case CONN_FAIL:
+						log.warn("filter {} replied with illegal packet {}",
+							filter.getName(), r);
+						break;
+					case ADDHEADER:		// EOM
+					case ADDRCPT:		// EOM
+					case ADDRCPT_PAR:	// EOM
+					case CHGFROM:		// EOM
+					case CHGHEADER:		// EOM
+					case DELRCPT:		// EOM
+					case INSHEADER:		// EOM
+					case REPLBODY:		// EOM
+					case QUARANTINE:	// EOM
+					case PROGRESS:		// EOM
+						if (cmd == Type.BODYEOB) {
+							p.send(channel);
+						} else {
+							toSend.add(p);
+						}
+						break;
+					case CONTINUE:
+					case SHUTDOWN:
+						break;
+					default:
+						log.warn("filter {} replied with unknown packet {}",
+							filter.getName(), r);
+				}
+			}
+		}
+		if (result != null) {
+			result.send(channel);
+		}
+		return stop;
+	}
+
+	/**
+	 * Handle Packets
+	 * @param skey
+	 * @return <code>true</code> if last packet has been sent, connection can 
+	 * 		be closed.
+	 * @throws IOException 
+	 */
+	private boolean handlePaket() throws IOException {
 		ArrayList<MailFilter> todo = needTask(packageType);
 		switch (packageType) {
 			case MACRO:
 				final MacroPacket mp = new MacroPacket(data);
 				allMacros.putAll(mp.getMacros());
 				lastMacros.putAll(mp.getMacros());
-				if (todo.size() > 0) {
-					r = new MilterTask(packageType, todo, skey) {
-						@Override
-						void callMilter(MailFilter f, List<Packet> res) {
-							f.doMacros(allMacros, mp.getMacros());
-						}
-					};
+				for (MailFilter f : todo) {
+					f.doMacros(allMacros, mp.getMacros());
 				}
 				// no reply at all
 				break;
@@ -561,86 +410,80 @@ public class Worker implements Comparable<Worker> {
 				connectionMacros.putAll(allMacros);
 				if (todo.size() > 0) {
 					final ConnectPacket cp = new ConnectPacket(data);
-					r = new MilterTask(packageType, todo, skey) {
-						@Override
-						void callMilter(MailFilter f, List<Packet> res) {
-							res.add(f.doConnect(cp.getHostname(), cp.getPort(), 
-								cp.getInfo()));
+					for (MailFilter f : todo) {
+						Packet p = f.doConnect(cp.getHostname(), cp.getPort(), 
+							cp.getInfo());
+						if (handleResult(f, packageType, p)) {
+							return true;
 						}
-					};
-				} else {
-					send(skey, MailFilter.CONTINUE);
+					}
 				}
+				MailFilter.CONTINUE.send(channel);
 				break;
 			case HELO:
 				connectionMacros.putAll(lastMacros);
 				if (todo.size() > 0) {
 					final HeloPacket lp = new HeloPacket(data);
-					r = new MilterTask(packageType, todo, skey) {
-						@Override
-						void callMilter(MailFilter f, List<Packet> res) {
-							res.add(f.doHelo(lp.getDomain()));
+					for (MailFilter f : todo) {
+						Packet p = f.doHelo(lp.getDomain());
+						if (handleResult(f, packageType, p)) {
+							return true;
 						}
-					};
-				} else {
-					send(skey, MailFilter.CONTINUE);
+					}
 				}
+				MailFilter.CONTINUE.send(channel);
 				break;
 			case MAIL:
 				lastMacros.clear();
 				final MailFromPacket fp = new MailFromPacket(data);
 				if (todo.size() > 0) {
-					r = new MilterTask(packageType, todo, skey) {
-						@Override
-						void callMilter(MailFilter f, List<Packet> res) {
-							res.add(f.doMailFrom(fp.getFrom()));
+					for (MailFilter f : todo) {
+						Packet p = f.doMailFrom(fp.getFrom());
+						if (handleResult(f, packageType, p)) {
+							return true;
 						}
-					};
-				} else {
-					send(skey, MailFilter.CONTINUE);
+					}
 				}
+				MailFilter.CONTINUE.send(channel);
 				break;
 			case RCPT:
 				lastMacros.clear();
 				final RecipientToPacket tp = new RecipientToPacket(data);
 				if (todo.size() > 0) {
-					r = new MilterTask(packageType, todo, skey) {
-						@Override
-						void callMilter(MailFilter f, List<Packet> res) {
-							res.add(f.doRecipientTo(tp.getRecipient()));
+					for (MailFilter f : todo) {
+						Packet p = f.doRecipientTo(tp.getRecipient());
+						if (handleResult(f, packageType, p)) {
+							return true;
 						}
-					};
-				} else {
-					send(skey, MailFilter.CONTINUE);
+					}
 				}
+				MailFilter.CONTINUE.send(channel);
 				break;
 			case HEADER:
 				lastMacros.clear();
 				HeaderPacket hp = new HeaderPacket(data);
 				headers.add(new Header(hp.getName(), hp.getValue()));
 				if (todo.size() > 0) {
-					r = new MilterTask(packageType, todo, skey) {
-						@Override
-						void callMilter(MailFilter f, List<Packet> res) {
-							res.add(f.doHeader(headers));
+					for (MailFilter f : todo) {
+						Packet p = f.doHeader(headers);
+						if (handleResult(f, packageType, p)) {
+							return true;
 						}
-					};
-				} else {
-					send(skey, MailFilter.CONTINUE);
+					}
 				}
+				MailFilter.CONTINUE.send(channel);
 				break;
 			case EOH:
 				lastMacros.clear();
 				if (todo.size() > 0) {
-					r = new MilterTask(packageType, todo, skey) {
-						@Override
-						void callMilter(MailFilter f, List<Packet> res) {
-							res.add(f.doEndOfHeader(headers, allMacros));
+					for (MailFilter f : todo) {
+						Packet p = f.doEndOfHeader(headers, allMacros);
+						if (handleResult(f, packageType, p)) {
+							return true;
 						}
-					};
-				} else {
-					send(skey, MailFilter.CONTINUE);
+					}
 				}
+				MailFilter.CONTINUE.send(channel);
 				break;
 			case BODY:
 				lastMacros.clear();
@@ -662,85 +505,97 @@ public class Worker implements Comparable<Worker> {
 							}
 						}
 					}
-					r = new MilterTask(packageType, todo, skey) {
-						@Override
-						void callMilter(MailFilter f, List<Packet> res) {
-							res.add(f.doBody(bp.getChunk()));
+					for (MailFilter f : todo) {
+						Packet p = f.doBody(bp.getChunk());
+						if (handleResult(f, packageType, p)) {
+							return true;
 						}
-					};
-				} else {
-					send(skey, MailFilter.CONTINUE);
+					}
 				}
+				MailFilter.CONTINUE.send(channel);
 				break;
 			case BODYEOB:
 				lastMacros.clear();
+				boolean quarantined = false;
+				if (toSend != null && !toSend.isEmpty()) {
+					for (Packet p : toSend) {
+						if (p.getType() == de.ovgu.cs.milter4j.reply.Type.QUARANTINE)
+						{
+							if (quarantined) {
+								continue;
+							}
+							quarantined = true;
+						}
+						p.send(channel);
+					}
+					toSend.clear();
+				}
 				if (todo.size() > 0) {
 					if (!(assembleMessage4.isEmpty() 
 						|| Collections.disjoint(todo, assembleMessage4))) 
 					{
 						// TODO construct message
 					}
-					r = new MilterTask(packageType, todo, skey) {
-						@Override
-						void callMilter(MailFilter f, List<Packet> res) {
-							res.addAll(f.doEndOfMail(headers, allMacros, null));
+					for (MailFilter f : todo) {
+						List<Packet> p = f.doEndOfMail(headers, allMacros, null);
+						if (p != null) {
+							if (handleResult(f, packageType, 
+								p.toArray(new Packet[p.size()]))) 
+							{
+								return true;
+							}
 						}
-					};
-				} else {
-					send(skey, MailFilter.CONTINUE);
+					}
 				}
+				MailFilter.CONTINUE.send(channel);
 				break;
 			case UNKNOWN:
 				lastMacros.clear();
 				if (todo.size() > 0) {
 					final UnknownCmdPacket up = new UnknownCmdPacket(data);
-					r = new MilterTask(packageType, todo, skey) {
-						@Override
-						void callMilter(MailFilter f, List<Packet> res) {
-							res.add(f.doBadCommand(up.getCmd()));
+					for (MailFilter f : todo) {
+						Packet p = f.doBadCommand(up.getCmd());
+						if (handleResult(f, packageType, p)) {
+							return true;
 						}
-					};
-				} else {
-					send(skey, MailFilter.CONTINUE);
+					}
 				}
+				MailFilter.CONTINUE.send(channel);
 				break;
 			case OPTNEG:
 				final NegotiationPacket rp = new NegotiationPacket(data);
 				negotiate(rp);
-				send(skey, rp);
+				rp.send(channel);
 				break;
 			case QUIT:
 			case QUIT_NC:
-				cleanup(false, skey);
+				cleanup(false);
 				break;
 			case ABORT:
-				cleanup(true, skey);
+				cleanup(true);
 				break;
 			case DATA:
 				lastMacros.clear();
 				/* actually the milter will send macros only, but no data */
 				log.warn("Ooops - unexpected DATA packet received - ignored");
-				send(skey, MailFilter.CONTINUE);
+				MailFilter.CONTINUE.send(channel);
 				break;
 			default:
 				lastMacros.clear();
-				send(skey, MailFilter.CONTINUE);
+				MailFilter.CONTINUE.send(channel);
 				log.warn("Unknown comand " + packageType + " not handled");
 		}
-		if (r != null) {
-			threadPool.submit(new MilterFuture<MilterTask>(r, runningTasks));
-		}
+		return false;
 	}
 	
 	/**
 	 * Read available data from the given channel and start a thread processing
 	 * data if neccessary. 
-	 * @param key	channel selection key
 	 * @return <code>true</code> a complete packet has been read.
 	 * @throws IOException on I/O error
 	 */
-	public boolean read(SelectionKey key) throws IOException {
-		fillBuffer(key, buf);
+	public boolean read() throws IOException {
+		fillBuffer(buf);
 		if (buf.hasRemaining()) {
 			return false;
 		}
@@ -760,7 +615,7 @@ public class Worker implements Comparable<Worker> {
 			data = len < 2 ? NULL_BUFFER : ByteBuffer.allocate(len-1);
 			buf = data;
 			// try to fill data ASAP
-			fillBuffer(key, buf);
+			fillBuffer(buf);
 			if (data.hasRemaining()) {
 				return false;
 			}
@@ -771,7 +626,7 @@ public class Worker implements Comparable<Worker> {
 		}
 		buf = header;
 		if (packageType != null) {
-			handlePaket(key);
+			handlePaket();
 		}
 		return true;
 	}
@@ -796,5 +651,17 @@ public class Worker implements Comparable<Worker> {
 	@Override
 	public String toString() {
 		return name;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public Object call() throws Exception {
+		while(read()) {
+			// cycle
+		}
+		cleanup(false);
+		return null;
 	}
 }
