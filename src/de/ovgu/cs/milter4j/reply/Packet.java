@@ -56,10 +56,35 @@ public abstract class Packet {
 		return type;
 	}
 	
+	/**
+	 * Reset the state of the package.
+	 * <p>
+	 * If a package gets send on a none-blocking channel, it may happen, that
+	 * not all data can be sent at once. The package always remembers, how many
+	 * bytes has been sent and thus a consecutive call of 
+	 * {@link #send(WritableByteChannel)} sends the remaining bytes, only 
+	 * (if possible).
+	 * <p>
+	 * So if one wants to send the whole content of the packet again, one needs
+	 * to call this method, to reset the state of the packet.
+	 * <p>
+	 * NOTE: This method is NOT thread-safe!
+	 * 
+	 * @see #send(WritableByteChannel)
+	 * @see ByteBuffer#rewind()
+	 */
+	public void reset() {
+		if (buf != null) {
+			buf.rewind();
+		}
+	}
+	
 	private ByteBuffer buf;
 	
 	/**
 	 * Send the paket to the given channel.
+	 * <p>
+	 * NOTE: This method is NOT thread-safe!
 	 * 
 	 * @param ch		channel to use for sending
 	 * @return <code>true</code> if the complete packet could be sent. If not,

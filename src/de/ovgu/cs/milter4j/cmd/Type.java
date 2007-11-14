@@ -65,7 +65,7 @@ public enum Type {
 	 * Constructor
 	 * @param cmd			value sent by the MTA as ID aka cmd in the packet
 	 * @param skipflag		flag the filter must set, if it is not interested
-	 * 						in this command
+	 * 						in handling this command
 	 * @param replyflag		flag the filter must set, if it will not send a
 	 * 						response to that command
 	 */

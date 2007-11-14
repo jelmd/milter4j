@@ -30,6 +30,7 @@ import org.slf4j.LoggerFactory;
 
 import de.ovgu.cs.milter4j.cmd.BodyPacket;
 import de.ovgu.cs.milter4j.cmd.ConnectPacket;
+import de.ovgu.cs.milter4j.cmd.DataPacket;
 import de.ovgu.cs.milter4j.cmd.HeaderPacket;
 import de.ovgu.cs.milter4j.cmd.HeloPacket;
 import de.ovgu.cs.milter4j.cmd.MacroPacket;
@@ -38,6 +39,7 @@ import de.ovgu.cs.milter4j.cmd.RecipientToPacket;
 import de.ovgu.cs.milter4j.cmd.Type;
 import de.ovgu.cs.milter4j.cmd.UnknownCmdPacket;
 import de.ovgu.cs.milter4j.reply.AcceptPacket;
+import de.ovgu.cs.milter4j.reply.ContinuePacket;
 import de.ovgu.cs.milter4j.reply.NegotiationPacket;
 import de.ovgu.cs.milter4j.reply.Packet;
 import de.ovgu.cs.milter4j.reply.SkipPacket;
@@ -86,7 +88,6 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 	private HashSet<MailFilter> assembleMessage4;
 	private ByteArrayOutputStream body;
 	private static final ByteBuffer NULL_BUFFER = ByteBuffer.allocate(0);
-	private ByteBuffer buf;
 	private ByteBuffer header = ByteBuffer.allocateDirect(5);
 	private ByteBuffer data;
 	private Type packageType;
@@ -175,7 +176,6 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 			p.setMacros(stages[i], macros2negotiate.get(stages[i]));
 		}
 		macros2negotiate = p.getStageMacros();
-		buf = header;
 	}
 
 	/**
@@ -316,8 +316,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 		body = null;
 		data = null;
 		header.clear();
-		buf = header;
-		log.debug("{} done ...", this);
+		log.debug("{} done.", this);
 	}
 
 	/**
@@ -400,13 +399,13 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 	/**
 	 * Handle Packets
 	 * @param skey
-	 * @return <code>true</code> if last packet has been sent, connection can 
-	 * 		be closed.
+	 * @return <code>true</code> if last packet has been sent, i.e. connection 
+	 * 		can be closed.
 	 * @throws IOException 
 	 */
-	private boolean handlePaket() throws IOException {
-		ArrayList<MailFilter> todo = needTask(packageType);
-		switch (packageType) {
+	private boolean handlePaket(Type cmd, ByteBuffer data) throws IOException {
+		ArrayList<MailFilter> todo = needTask(cmd);
+		switch (cmd) {
 			case MACRO:
 				final MacroPacket mp = new MacroPacket(data);
 				allMacros.putAll(mp.getMacros());
@@ -429,7 +428,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 						}
 					}
 				}
-				send(MailFilter.CONTINUE);
+				send(new ContinuePacket());
 				break;
 			case HELO:
 				connectionMacros.putAll(lastMacros);
@@ -442,7 +441,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 						}
 					}
 				}
-				send(MailFilter.CONTINUE);
+				send(new ContinuePacket());
 				break;
 			case MAIL:
 				lastMacros.clear();
@@ -455,7 +454,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 						}
 					}
 				}
-				send(MailFilter.CONTINUE);
+				send(new ContinuePacket());
 				break;
 			case RCPT:
 				lastMacros.clear();
@@ -468,7 +467,21 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 						}
 					}
 				}
-				send(MailFilter.CONTINUE);
+				send(new ContinuePacket());
+				break;
+			case DATA:
+				lastMacros.clear();
+				/* actually the milter will send macros only, but no data */
+				if (todo.size() > 0) {
+					DataPacket dp = new DataPacket(data);
+					for (MailFilter f : todo) {
+						Packet p = f.doData(dp.getData());
+						if (handleResult(f, packageType, p)) {
+							return true;
+						}
+					}
+				}
+				send(new ContinuePacket());
 				break;
 			case HEADER:
 				lastMacros.clear();
@@ -482,7 +495,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 						}
 					}
 				}
-				send(MailFilter.CONTINUE);
+				send(new ContinuePacket());
 				break;
 			case EOH:
 				lastMacros.clear();
@@ -494,7 +507,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 						}
 					}
 				}
-				send(MailFilter.CONTINUE);
+				send(new ContinuePacket());
 				break;
 			case BODY:
 				lastMacros.clear();
@@ -523,7 +536,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 						}
 					}
 				}
-				send(MailFilter.CONTINUE);
+				send(new ContinuePacket());
 				break;
 			case BODYEOB:
 				lastMacros.clear();
@@ -558,7 +571,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 						}
 					}
 				}
-				send(MailFilter.CONTINUE);
+				send(new ContinuePacket());
 				break;
 			case UNKNOWN:
 				lastMacros.clear();
@@ -571,7 +584,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 						}
 					}
 				}
-				send(MailFilter.CONTINUE);
+				send(new ContinuePacket());
 				break;
 			case OPTNEG:
 				final NegotiationPacket rp = new NegotiationPacket(data);
@@ -584,16 +597,10 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 				return true;
 			case ABORT:
 				cleanup(true);
-				return true;
-			case DATA:
-				lastMacros.clear();
-				/* actually the milter will send macros only, but no data */
-				log.warn("Ooops - unexpected DATA packet received - ignored");
-				send(MailFilter.CONTINUE);
 				break;
 			default:
 				lastMacros.clear();
-				send(MailFilter.CONTINUE);
+				send(new ContinuePacket());
 				log.warn("Unknown comand " + packageType + " not handled");
 		}
 		return false;
@@ -601,17 +608,20 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 	
 	/**
 	 * Read available data from the given channel and start a thread processing
-	 * data if neccessary. 
+	 * data if neccessary.
+	 * <p>
+	 * Ready for non-blocking I/O.
+	 *  
 	 * @return <code>true</code> a complete packet has been read.
 	 * @throws IOException on I/O error
 	 */
-	public boolean readPacket() throws IOException {
-		fillBuffer(buf);
-		if (buf.hasRemaining()) {
-			return false;
-		}
-		buf.flip();
-		if (buf == header) {
+	private boolean readPacket() throws IOException {
+		if (header.hasRemaining()) {
+			fillBuffer(header);
+			if (header.hasRemaining()) {
+				return false;
+			}
+			header.flip();
 			int len = header.getInt();
 			try {
 				packageType = Type.get(header.get());
@@ -621,21 +631,18 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 			if (len < 0 || len > MAX_DATASIZE) {
 				throw new IOException("Invalid packet size encountered");
 			}
-			header.clear();
-			log.debug("Receiving {} with 1 + {} bytes of data", packageType, len-1);
 			data = len < 2 ? NULL_BUFFER : ByteBuffer.allocate(len-1);
-			buf = data;
-			// try to fill data ASAP
-			fillBuffer(buf);
-			if (data.hasRemaining()) {
-				return false;
-			}
-			data.flip();
-			log.debug("{}: {} bytes of data received", packageType, data.limit());
-		} else {
-			log.debug("{}: {} bytes of data received", packageType, data.limit());
 		}
-		buf = header;
+		if (data.hasRemaining()) {
+			log.debug("Receiving {} with 1 + {} bytes of data", packageType, data.remaining());
+			fillBuffer(data);
+		}
+		if (data.hasRemaining()) {
+			return false;
+		}
+		log.debug("{}: {} bytes of data received", packageType, data.limit());
+		data.flip();
+		header.clear();
 		return true;
 	}
 
@@ -661,10 +668,6 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 		return name;
 	}
 
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
 	public Object call() {
 		boolean last = false;
 		while(!last) {
@@ -672,7 +675,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 				while(channel.isOpen() && !readPacket()) {
 					// try again
 				}
-				last = channel.isOpen() ? handlePaket() : true;
+				last = channel.isOpen() ? handlePaket(packageType, data) : true;
 			} catch (IOException e) {
 				log.warn(e.getLocalizedMessage());
 				if (log.isDebugEnabled()) {

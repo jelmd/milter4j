@@ -21,6 +21,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import de.ovgu.cs.milter4j.MailFilter;
+import de.ovgu.cs.milter4j.reply.ContinuePacket;
 import de.ovgu.cs.milter4j.reply.Packet;
 
 /**
@@ -110,13 +111,23 @@ public class RequestDumper
 	 * {@inheritDoc}
 	 */
 	@Override
+	public Packet doData(byte[] data) {
+		StringBuilder buf = Misc.hexdump(data);
+		log.info("doData():" + eol + buf.toString());
+		return new ContinuePacket();
+	}
+	
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
 	public Packet doHeader(List<Header> headers) {
 		StringBuilder buf = new StringBuilder("doHeader:").append(eol);
 		for (Header h : headers) {
 			buf.append(h.getName()).append(": ").append(h.getValue()).append(eol);
 		}
 		log.info(buf.toString());
-		return CONTINUE;
+		return new ContinuePacket();
 	}
 	
 	/**
@@ -126,7 +137,7 @@ public class RequestDumper
 	public Packet doConnect(String hostname, int port, String info) {
 		log.info("doConnect:" + eol + "hostname=" + hostname + "  port=" + port
 			+ "  info=" + info);
-		return CONTINUE;
+		return new ContinuePacket();
 	}
 	
 	/**
@@ -135,7 +146,7 @@ public class RequestDumper
 	@Override
 	public Packet doHelo(String domain) {
 		log.info("doHelo:" + eol + "domain=" + domain);
-		return CONTINUE;
+		return new ContinuePacket();
 	}
 
 	/**
@@ -144,7 +155,7 @@ public class RequestDumper
 	@Override
 	public Packet doMailFrom(String from) {
 		log.info("doMailFrom:" + eol + "MAIL FROM: " + from);
-		return CONTINUE;
+		return new ContinuePacket();
 	}
 
 	/**
@@ -153,7 +164,7 @@ public class RequestDumper
 	@Override
 	public Packet doRecipientTo(String recipient) {
 		log.info("doRecipientTo:" + eol + "RCPT TO: " + recipient);
-		return CONTINUE;
+		return new ContinuePacket();
 	}
 
 	/**
@@ -162,7 +173,7 @@ public class RequestDumper
 	@Override
 	public Packet doBody(byte[] chunk) {
 		log.info("doBody:" + eol + new String(chunk));
-		return CONTINUE;
+		return new ContinuePacket();
 	}
 
 	/**
@@ -182,7 +193,7 @@ public class RequestDumper
 			buf.append(e.getKey()).append("=").append(e.getValue()).append(eol);
 		}
 		log.info(buf.toString());
-		return CONTINUE;
+		return new ContinuePacket();
 	}
 
 	/**
@@ -202,7 +213,7 @@ public class RequestDumper
 	@Override
 	public Packet doBadCommand(String cmd) {
 		log.info("doBadCommand:" + eol + cmd);
-		return CONTINUE;
+		return new ContinuePacket();
 	}
 
 }

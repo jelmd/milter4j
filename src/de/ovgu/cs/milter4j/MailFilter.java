@@ -51,7 +51,7 @@ import de.ovgu.cs.milter4j.reply.Packet;
  * #doEndOfMail(List, HashMap, Message)} of all managed filters gets called.
  * <p>
  * If a <code>do*</code> method returns <code>null</code>, the result will be 
- * interpreted as {@link #CONTINUE}.
+ * interpreted as {@link ContinuePacket}.
  * <p>
  * If a milter returns one of the following packet types, the managing server
  * sends it back to the MTA immediately.
@@ -83,9 +83,6 @@ import de.ovgu.cs.milter4j.reply.Packet;
  * @version	$Revision$
  */
 public abstract class MailFilter {
-
-	/** a reusable packet */
-	protected static final ContinuePacket CONTINUE = new ContinuePacket();
 
 	/** a descriptive short name of the filter, to be used for logging, etc. 
 	 * @return always a none <code>null</code> value */
@@ -238,6 +235,20 @@ public abstract class MailFilter {
 	}
 
 	/**
+	 * Handle the DATA start notification sent by the MTA.
+	 * <p>
+	 * Only called, if {@link #getCommands()} contains {@link Type#DATA}.
+	 * <p>
+	 * Type: message-oriented
+	 * 
+	 * @param data	data sent by the MTA (usually an empty array).
+	 * @return the answer to send back to the MTA.
+	 */
+	public Packet doData(byte[] data) {
+		return new ContinuePacket();
+	}
+
+	/**
 	 * Handle a single header submitted by the MTA. The header sent is the last
 	 * entry in the given list. A filter is not allowed to change the given
 	 * list nor to change any entries in it, since shared by other filters as 
@@ -251,7 +262,7 @@ public abstract class MailFilter {
 	 * @return the answer to send back to the MTA.
 	 */
 	public Packet doHeader(List<Header> headers) {
-		return CONTINUE;
+		return new ContinuePacket();
 	}
 	
 	/**
@@ -267,10 +278,10 @@ public abstract class MailFilter {
 	 * @param info 	IP address of the remote mail-client or UNIX-Path,
 	 * 		<code>null</code> if not available. 
 	 * 
-	 * @return the answer to this packet. Per default {@link #CONTINUE}.
+	 * @return the answer to this packet. Per default a new {@link ContinuePacket}
 	 */
 	public Packet doConnect(String hostname, int port, String info) {
-		return CONTINUE;
+		return new ContinuePacket();
 	}
 
 	/**
@@ -282,10 +293,10 @@ public abstract class MailFilter {
 	 * 
 	 * @param domain	the domain or whatever the mail-client submitted via 
 	 * 		HELO/EHLO
-	 * @return the answer to this packet. Per default {@link #CONTINUE}.
+	 * @return the answer to this packet. Per default a new {@link ContinuePacket}
 	 */
 	public Packet doHelo(String domain) {
-		return CONTINUE;
+		return new ContinuePacket();
 	}
 
 	/**
@@ -296,10 +307,10 @@ public abstract class MailFilter {
 	 * Type: message-oriented
 	 * 
 	 * @param from		'MAIL FROM:' value sent by the mail-client
-	 * @return the answer to this packet. Per default {@link #CONTINUE}.
+	 * @return the answer to this packet. Per default a new {@link ContinuePacket}
 	 */
 	public Packet doMailFrom(String from) {
-		return CONTINUE;
+		return new ContinuePacket();
 	}
 
 	/**
@@ -310,10 +321,10 @@ public abstract class MailFilter {
 	 * Type: recipient-oriented
 	 * 
 	 * @param recipient		'RCPT TO:' value sent by the mail-client
-	 * @return the answer to this packet. Per default {@link #CONTINUE}.
+	 * @return the answer to this packet. Per default a new {@link ContinuePacket}
 	 */
 	public Packet doRecipientTo(String recipient) {
-		return CONTINUE;
+		return new ContinuePacket();
 	}
 
 	/**
@@ -335,10 +346,10 @@ public abstract class MailFilter {
 	 * 
 	 * @param chunk		raw data received. It might be a part or the whole 
 	 * 		mail body, depending on its length.
-	 * @return the answer to this packet. Per default {@link #CONTINUE}.
+	 * @return the answer to this packet. Per default a new {@link ContinuePacket}
 	 */
 	public Packet doBody(byte[] chunk) {
-		return CONTINUE;
+		return new ContinuePacket();
 	}
 
 	/**
@@ -355,12 +366,12 @@ public abstract class MailFilter {
 	 * 		by the MTA itself. Also other filter may still add new ones.
 	 * @param macros  all macros send from the MTA up to now for this connection.
 	 * 
-	 * @return the answer to this packet. Per default {@link #CONTINUE}.
+	 * @return the answer to this packet. Per default a new {@link ContinuePacket}
 	 */
 	public Packet doEndOfHeader(List<Header> headers, 
 		HashMap<String,String> macros) 
 	{
-		return CONTINUE;
+		return new ContinuePacket();
 	}
 
 	/**
@@ -403,9 +414,9 @@ public abstract class MailFilter {
 	 * Type: none (may occure in any stage)
 	 * 
 	 * @param cmd	SMTP command issued by the client
-	 * @return the answer to this packet. Per default {@link #CONTINUE}.
+	 * @return the answer to this packet. Per default a new {@link ContinuePacket}
 	 */
 	public Packet doBadCommand(String cmd) {
-		return CONTINUE;
+		return new ContinuePacket();
 	}
 }
