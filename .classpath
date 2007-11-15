@@ -5,6 +5,5 @@
 	<classpathentry kind="con" path="org.eclipse.jdt.USER_LIBRARY/JavaMail 1.4"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.USER_LIBRARY/Logback-debug"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.USER_LIBRARY/SLF4J-API-debug"/>
-	<classpathentry kind="lib" path="etc"/>
 	<classpathentry kind="output" path="build/classes"/>
 </classpath>

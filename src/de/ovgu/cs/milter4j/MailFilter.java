@@ -309,10 +309,10 @@ public abstract class MailFilter {
 	 * <p>
 	 * Type: message-oriented
 	 * 
-	 * @param from		'MAIL FROM:' value sent by the mail-client
+	 * @param from		'MAIL FROM:' values sent by the mail-client
 	 * @return the answer to this packet. Per default a new {@link ContinuePacket}
 	 */
-	public Packet doMailFrom(String from) {
+	public Packet doMailFrom(String[] from) {
 		return new ContinuePacket();
 	}
 
@@ -323,10 +323,10 @@ public abstract class MailFilter {
 	 * <p>
 	 * Type: recipient-oriented
 	 * 
-	 * @param recipient		'RCPT TO:' value sent by the mail-client
+	 * @param recipient		'RCPT TO:' values sent by the mail-client
 	 * @return the answer to this packet. Per default a new {@link ContinuePacket}
 	 */
-	public Packet doRecipientTo(String recipient) {
+	public Packet doRecipientTo(String[] recipient) {
 		return new ContinuePacket();
 	}
 

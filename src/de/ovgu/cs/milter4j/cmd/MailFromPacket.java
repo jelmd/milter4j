@@ -10,6 +10,7 @@
 package de.ovgu.cs.milter4j.cmd;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 
 /**
  * Sends SMTP MAIL command info to milter filters
@@ -22,7 +23,7 @@ import java.nio.ByteBuffer;
 public class MailFromPacket
 	extends Command
 {
-	private String from;
+	private String[] from;
 	
 	/**
 	 * Create the packet.
@@ -30,14 +31,23 @@ public class MailFromPacket
 	 */
 	public MailFromPacket(ByteBuffer data) {
 		super(Type.MAIL);
-		from = getString(null, data).toString();
+		ArrayList<String> args = new ArrayList<String>();
+		StringBuilder name = new StringBuilder(32);
+		while (data.hasRemaining()) {
+			name.setLength(0);
+			getString(name, data);
+			if (name.length() > 0) {
+				args.add(name.toString());
+			}
+		}
+		from = args.toArray(new String[args.size()]);
 	}
 	
 	/**
 	 * Get the content of the 'MAIL FROM:' command, sent by a mail-client.
 	 * @return the from value of the envelope.
 	 */
-	public String getFrom() {
+	public String[] getFrom() {
 		return from;
 	}
 }

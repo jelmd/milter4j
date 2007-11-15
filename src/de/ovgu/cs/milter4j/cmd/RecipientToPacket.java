@@ -10,6 +10,7 @@
 package de.ovgu.cs.milter4j.cmd;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 
 /**
  * Sends SMTP RCPT command info to milter filters
@@ -22,7 +23,7 @@ import java.nio.ByteBuffer;
 public class RecipientToPacket
 	extends Command
 {
-	private String recipient;
+	private String[] recipient;
 
 	/**
 	 * Create the packet.
@@ -30,14 +31,23 @@ public class RecipientToPacket
 	 */
 	public RecipientToPacket(ByteBuffer data) {
 		super(Type.RCPT);
-		recipient = getString(null, data).toString();
+		ArrayList<String> args = new ArrayList<String>();
+		StringBuilder name = new StringBuilder(32);
+		while (data.hasRemaining()) {
+			name.setLength(0);
+			getString(name, data);
+			if (name.length() > 0) {
+				args.add(name.toString());
+			}
+		}
+		recipient = args.toArray(new String[args.size()]);
 	}
 	
 	/**
 	 * Get the value of the 'RCPT TO:' command, the mail-client issued
 	 * @return the recipient value of the envelope
 	 */
-	public String getRecipient() {
+	public String[] getRecipient() {
 		return recipient;
 	}
 }

@@ -152,8 +152,12 @@ public class RequestDumper
 	 * {@inheritDoc}
 	 */
 	@Override
-	public Packet doMailFrom(String from) {
-		log.info("doMailFrom:" + eol + "MAIL FROM: " + from);
+	public Packet doMailFrom(String[] from) {
+		StringBuilder buf = new StringBuilder("doMailFrom:").append(eol);
+		for (String arg : from) {
+			buf.append("MAIL FROM: ").append(arg).append(eol);
+		}
+		log.info(buf.toString());
 		return new ContinuePacket();
 	}
 
@@ -161,8 +165,12 @@ public class RequestDumper
 	 * {@inheritDoc}
 	 */
 	@Override
-	public Packet doRecipientTo(String recipient) {
-		log.info("doRecipientTo:" + eol + "RCPT TO: " + recipient);
+	public Packet doRecipientTo(String[] recipient) {
+		StringBuilder buf = new StringBuilder("doRecipientTo:").append(eol);
+		for (String arg : recipient) {
+			buf.append("RCPT TO: ").append(arg).append(eol);
+		}
+		log.info(buf.toString());
 		return new ContinuePacket();
 	}
 
@@ -183,11 +191,11 @@ public class RequestDumper
 		HashMap<String,String> macros) 
 	{
 		StringBuilder buf = new StringBuilder("doEndOfHeader:").append(eol);
-		buf.append("all Headers:").append(eol);
+		buf.append("ALL HEADERS:").append(eol);
 		for (Header h : headers) {
 			buf.append(h.getName()).append(": ").append(h.getValue()).append(eol);
 		}
-		buf.append(eol).append("all Macros:").append(eol);
+		buf.append(eol).append("ALL MACROS:").append(eol);
 		for (Entry<String,String> e : macros.entrySet()) {
 			buf.append(e.getKey()).append("=").append(e.getValue()).append(eol);
 		}
