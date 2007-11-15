@@ -15,11 +15,12 @@ import java.util.List;
 import java.util.Set;
 
 import javax.mail.Header;
-import javax.mail.Message;
+import javax.mail.internet.MimeMultipart;
 
 import de.ovgu.cs.milter4j.cmd.Type;
 import de.ovgu.cs.milter4j.reply.ContinuePacket;
 import de.ovgu.cs.milter4j.reply.Packet;
+import de.ovgu.cs.milter4j.util.Mail;
 
 /**
  * An abstract mail filter, which actually handles the MTA requests.
@@ -44,11 +45,11 @@ import de.ovgu.cs.milter4j.reply.Packet;
  * <p>
  * NOTE: According to Milter API one may send messages, which modify the current 
  * mail only when the end of the mail has been reached 
- * ({@link #doEndOfMail(List, HashMap, Message)}). For convinience reasons
+ * ({@link #doEndOfMail(List, HashMap, Mail)}). For convinience reasons
  * however, this implementation allows filter to return those packets immediately.
  * The managing server will queue these packets and send them as soon as it gets
  * the end of mail notification from the MTA (before the {@link 
- * #doEndOfMail(List, HashMap, Message)} of all managed filters gets called.
+ * #doEndOfMail(List, HashMap, Mail)} of all managed filters gets called.
  * <p>
  * If a <code>do*</code> method returns <code>null</code>, the result will be 
  * interpreted as {@link ContinuePacket}.
@@ -176,7 +177,7 @@ public abstract class MailFilter {
 	 * from doing the reassembling by itself.
 	 * <p>
 	 * The filter may access the reconstructed mail in its {@link 
-	 * #doEndOfMail(List, HashMap, Message)} method.
+	 * #doEndOfMail(List, HashMap, Mail)} method.
 	 *   
 	 * @return	if <code>true</code> managing server reassembles the mail by
 	 * 	collecting all data packets.
@@ -338,7 +339,7 @@ public abstract class MailFilter {
 	 * If this or another filter returns <code>true</code> for 
 	 * {@link #reassembleMail()}, this chunk gets collected by the managing 
 	 * server and will be passed as the complete mail body in 
-	 * {@link #doEndOfMail(List, HashMap, Message)}. So if the filter does
+	 * {@link #doEndOfMail(List, HashMap, Mail)}. So if the filter does
 	 * not process the data immediately, there is no need to copy/store data
 	 * for later use.
 	 * <p>
@@ -389,6 +390,10 @@ public abstract class MailFilter {
 	 * {@link #getCommands()}. However, it is not required to overwrite
 	 * {@link #doBody(byte[])}.
 	 * <p>
+	 * If mail gets reconstructed, {@link Mail#getContent()} usually returns a 
+	 * String, if it is a simple text message, and {@link MimeMultipart} if it 
+	 * contains multiple MIME parts.
+	 * <p>
 	 * Only called, if {@link #getCommands()} contains {@link Type#BODYEOB}.
 	 * <p>
 	 * Type: message-oriented
@@ -398,12 +403,14 @@ public abstract class MailFilter {
 	 * 		headers added by the MTA itself. Also other filter may still add 
 	 * 		new ones.
 	 * @param macros  all macros sent from the MTA up to now for this connection.
-	 * @param message the complete message. Might be <code>null</code>.
+	 * @param message the complete message. Might be <code>null</code> if not 
+	 * 		requested.
 	 * 
 	 * @return a list of answers to this packet. Per default <code>null</code>.
+	 * @see MimeMultipart
 	 */
 	public List<Packet> doEndOfMail(List<Header> headers, 
-		HashMap<String,String> macros, Message message) 
+		HashMap<String,String> macros, Mail message) 
 	{
 		return null;
 	}

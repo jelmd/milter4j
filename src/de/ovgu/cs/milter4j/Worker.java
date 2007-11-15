@@ -42,6 +42,7 @@ import de.ovgu.cs.milter4j.reply.ContinuePacket;
 import de.ovgu.cs.milter4j.reply.NegotiationPacket;
 import de.ovgu.cs.milter4j.reply.Packet;
 import de.ovgu.cs.milter4j.reply.SkipPacket;
+import de.ovgu.cs.milter4j.util.Mail;
 
 /**
  * A Worker (mail filter proxy), which handles a single connection initiated by 
@@ -567,13 +568,15 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 					toSend.clear();
 				}
 				if (todo.size() > 0) {
-					if (!(assembleMessage4.isEmpty() 
+					Mail msg = null;
+					if (!(assembleMessage4.isEmpty() || body == null
 						|| Collections.disjoint(todo, assembleMessage4))) 
 					{
-						// TODO construct message
+						msg = new Mail(headers, body.toByteArray());
+						body = null;
 					}
 					for (MailFilter f : todo) {
-						List<Packet> p = f.doEndOfMail(headers, allMacros, null);
+						List<Packet> p = f.doEndOfMail(headers, allMacros, msg);
 						if (p != null) {
 							if (handleResult(f, packageType, 
 								p.toArray(new Packet[p.size()]))) 

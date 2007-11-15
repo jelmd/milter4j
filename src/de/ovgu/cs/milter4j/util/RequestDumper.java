@@ -9,13 +9,14 @@
  */
 package de.ovgu.cs.milter4j.util;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.mail.Header;
-import javax.mail.Message;
+import javax.mail.MessagingException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,18 +55,10 @@ public class RequestDumper
 	 * {@inheritDoc}
 	 */
 	@Override
-	public void doAbort() {
-		// nothing to do
+	public boolean reassembleMail() {
+		return true;
 	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public void doQuit() {
-		// nothing to do
-	}
-
+	
 	/**
 	 * {@inheritDoc}
 	 */
@@ -91,6 +84,22 @@ public class RequestDumper
 	}
 	
 	// MTA stuff
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public void doAbort() {
+		log.info("ABORT");
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public void doQuit() {
+		log.info("QUIT");
+	}
+
 	/**
 	 * {@inheritDoc}
 	 */
@@ -208,9 +217,32 @@ public class RequestDumper
 	 */
 	@Override
 	public List<Packet> doEndOfMail(List<Header> headers, 
-		HashMap<String,String> macros, Message message) 
+		HashMap<String,String> macros, Mail msg) 
 	{
-		log.info("doEndOfMail:" + eol + ".");
+		StringBuilder buf = new StringBuilder("doEndOfMail:").append(eol);
+		if (msg != null) {
+			try {
+				buf.append("  content type=").append(msg.getContentType()).append(eol);
+				buf.append("  description =").append(msg.getDescription()).append(eol);
+				buf.append("  disposition =").append(msg.getDisposition()).append(eol);
+				buf.append("  filename    =").append(msg.getFileName()).append(eol);
+				buf.append("  encoding    =").append(msg.getEncoding()).append(eol);
+				buf.append("  content     =").append(msg.getContent()).append(eol);
+			} catch (IOException e) {
+				log.warn(e.getLocalizedMessage());
+				if (log.isDebugEnabled()) {
+					log.debug("method()", e);
+				}
+			} catch (MessagingException e) {
+				log.warn(e.getLocalizedMessage());
+				if (log.isDebugEnabled()) {
+					log.debug("method()", e);
+				}
+			}
+		} else {
+			buf.append(".");
+		}
+		log.info(buf.toString());
 		return null;
 	}
 
