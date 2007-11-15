@@ -38,9 +38,10 @@ import de.ovgu.cs.milter4j.reply.Packet;
  * 	<li>{@link MailFilter#doHelo(String)}</li>
  *	<li>{@link MailFilter#doRecipientTo(String[])}</li>
  *	<li>{@link MailFilter#doMacros(java.util.HashMap, java.util.HashMap)}</li>
+ *	<li>{@link MailFilter#doAbort()}</li>
  * </ul>
  * Also the arguments supplied in the {@link MailFilter#doMailFrom(String[])}
- * usually do not contain any ESMPT args, since they are not stored in an
+ * usually do not contain any ESMTP args, since they are not stored in an
  * mbox file.
  * 
  * @author 	Jens Elkner
@@ -139,5 +140,6 @@ public class FileWorker {
 			log.info("RESULT: {}", String.valueOf(p));
 		}
 		MimeMessage msg = new MimeMessage(null, is);
+		
 	}
 }
