@@ -28,19 +28,19 @@ package de.ovgu.cs.milter4j;
  * @version	$Revision$
  */
 public enum MacroStage {
-	/** connect */
+	/** connect (connection-oriented) */
 	CONNECT,
-	/** HELO/EHLO */
+	/** HELO/EHLO (connection-oriented) */
 	HELO,
-	/** MAIL From */
+	/** MAIL From (message-oriented) */
 	ENVFROM,
-	/** RCPT To */
+	/** RCPT To (recipient-oriented) */
 	ENVRCPT,
-	/** DATA */
+	/** DATA  (message-oriented) */
 	DATA,
-	/** end of message (final dot) */
+	/** end of message (final dot)  (message-oriented) */
 	EOM,
-	/** end of header */
+	/** end of header  (message-oriented) */
 	EOH;
 	
 	/**

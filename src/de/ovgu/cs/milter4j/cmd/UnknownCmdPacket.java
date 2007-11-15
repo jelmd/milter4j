@@ -14,6 +14,8 @@ import java.nio.ByteBuffer;
 /**
  * Sends any bad aka unkown or un-implemented command, issued by the mail-client 
  * when talking with the MTA.
+ * <p>
+ * message-oriented
  * 
  * @author 	Jens Elkner
  * @version	$Revision$

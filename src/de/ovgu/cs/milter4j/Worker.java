@@ -30,7 +30,6 @@ import org.slf4j.LoggerFactory;
 
 import de.ovgu.cs.milter4j.cmd.BodyPacket;
 import de.ovgu.cs.milter4j.cmd.ConnectPacket;
-import de.ovgu.cs.milter4j.cmd.DataPacket;
 import de.ovgu.cs.milter4j.cmd.HeaderPacket;
 import de.ovgu.cs.milter4j.cmd.HeloPacket;
 import de.ovgu.cs.milter4j.cmd.MacroPacket;
@@ -69,7 +68,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 	public static final String MTA_CAN_SKIP_KEY = "MTA_UNDERSTANDS_SKIP";
 	
 	/** The currently supported milter API version: {@value #VERSION} */
-	public static int VERSION = 4;
+	public static int VERSION = 6;
 	
 	private long createTime;
 	private String name;
@@ -217,13 +216,17 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 	 */
 	private boolean fillBuffer(ByteBuffer buf) throws IOException {
 		if (buf.capacity() == 0) {
-			log.debug("Skipping read of zero {} buffer", 
-				(buf == header ? "header" : "data"));
+			if (log.isDebugEnabled()) {
+				log.debug("Skipping read of zero {} buffer", 
+					(buf == header ? "header" : "data"));
+			}
 			return false;
 		}
 		int count = 0;
-		log.debug("Trying to read {} buffer ({} byte)", 
-			(buf == header ? "header" : "data"), buf.remaining());
+		if (log.isDebugEnabled()) {
+			log.debug("Trying to read {} buffer ({} byte)", 
+				(buf == header ? "header" : "data"), buf.remaining());
+		}
 		while (buf.hasRemaining() && ((count = channel.read(buf)) > 0)) {
 			// read again
 		}
@@ -338,8 +341,13 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 				de.ovgu.cs.milter4j.reply.Type r = p.getType();
 				switch (r) {
 					case REJECT:
-					case DISCARD:
 					case TEMPFAIL:
+						if (cmd == Type.RCPT) {
+							result = p;
+							break;
+						}
+						// else fall through, i.e. reject connection|message
+					case DISCARD:
 					case REPLYCODE:
 						result = p;
 						toSend.clear();
@@ -421,8 +429,8 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 				if (todo.size() > 0) {
 					final ConnectPacket cp = new ConnectPacket(data);
 					for (MailFilter f : todo) {
-						Packet p = f.doConnect(cp.getHostname(), cp.getPort(), 
-							cp.getInfo());
+						Packet p = f.doConnect(cp.getHostname(), 
+							cp.getAddressFaily(), cp.getPort(), cp.getInfo());
 						if (handleResult(f, packageType, p)) {
 							return true;
 						}
@@ -465,17 +473,21 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 						if (handleResult(f, packageType, p)) {
 							return true;
 						}
+						if (p.getType() == de.ovgu.cs.milter4j.reply.Type.REJECT
+							|| p.getType() == de.ovgu.cs.milter4j.reply.Type.TEMPFAIL) 
+						{
+							return false;
+						}
 					}
 				}
 				send(new ContinuePacket());
 				break;
 			case DATA:
 				lastMacros.clear();
-				/* actually the milter will send macros only, but no data */
+				/* right now the milter will send macros only, but no data */
 				if (todo.size() > 0) {
-					DataPacket dp = new DataPacket(data);
 					for (MailFilter f : todo) {
-						Packet p = f.doData(dp.getData());
+						Packet p = f.doData();
 						if (handleResult(f, packageType, p)) {
 							return true;
 						}
@@ -489,7 +501,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 				headers.add(new Header(hp.getName(), hp.getValue()));
 				if (todo.size() > 0) {
 					for (MailFilter f : todo) {
-						Packet p = f.doHeader(headers);
+						Packet p = f.doHeader(hp.getName(), hp.getValue());
 						if (handleResult(f, packageType, p)) {
 							return true;
 						}
@@ -634,13 +646,18 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 			data = len < 2 ? NULL_BUFFER : ByteBuffer.allocate(len-1);
 		}
 		if (data.hasRemaining()) {
-			log.debug("Receiving {} with 1 + {} bytes of data", packageType, data.remaining());
+			if (log.isDebugEnabled()) {
+				log.debug("Receiving {} with 1 + {} bytes of data", 
+					packageType, data.remaining());
+			}
 			fillBuffer(data);
 		}
 		if (data.hasRemaining()) {
 			return false;
 		}
-		log.debug("{}: {} bytes of data received", packageType, data.limit());
+		if (log.isDebugEnabled()) {
+			log.debug("{}: {} bytes of data received", packageType, data.limit());
+		}
 		data.flip();
 		header.clear();
 		return true;
@@ -668,6 +685,9 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 		return name;
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	public Object call() {
 		boolean last = false;
 		while(!last) {
@@ -685,7 +705,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 			}
 		}
 		cleanup(false);
-		log.debug("{} finished", this);
+		log.debug("{} task finished", this);
 		return null;
 	}
 }

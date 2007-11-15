@@ -11,6 +11,8 @@ package de.ovgu.cs.milter4j.cmd;
 
 /**
  * Signals, the end of mail aka no more body chunks.
+ * <p>
+ * message-oriented
  * 
  * @author 	Jens Elkner
  * @version	$Revision$

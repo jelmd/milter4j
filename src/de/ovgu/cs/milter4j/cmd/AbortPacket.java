@@ -14,7 +14,8 @@ package de.ovgu.cs.milter4j.cmd;
  * Instruction to abort the current message. More messages from the same mail 
  * client may followe, so don't discard CONNECT/HELO information, if required
  * for processing.
- * 
+ * <p>
+ * message-oriented
  * @author 	Jens Elkner
  * @version	$Revision$
  */

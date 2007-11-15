@@ -13,6 +13,8 @@ import java.nio.ByteBuffer;
 
 /**
  * A single header cmd packet.
+ * <p>
+ * message-oriented
  * 
  * @author 	Jens Elkner
  * @version	$Revision$

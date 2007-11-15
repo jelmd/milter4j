@@ -13,6 +13,8 @@ import java.nio.ByteBuffer;
 
 /**
  * Sends SMTP RCPT command info to milter filters
+ * <p>
+ * recipient-oriented
  * 
  * @author 	Jens Elkner
  * @version	$Revision$

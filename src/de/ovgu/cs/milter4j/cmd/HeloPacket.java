@@ -15,6 +15,8 @@ import java.nio.ByteBuffer;
  * Sends SMTP HELO/EHLO command info to milter filters
  * <p>
  * HELO/EHLO can come at any point
+ * <p>
+ * connection-oriented
  * 
  * @author 	Jens Elkner
  * @version	$Revision$

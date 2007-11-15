@@ -235,16 +235,15 @@ public abstract class MailFilter {
 	}
 
 	/**
-	 * Handle the DATA start notification sent by the MTA.
+	 * Handle the DATA startup notification sent by the MTA.
 	 * <p>
 	 * Only called, if {@link #getCommands()} contains {@link Type#DATA}.
 	 * <p>
 	 * Type: message-oriented
 	 * 
-	 * @param data	data sent by the MTA (usually an empty array).
 	 * @return the answer to send back to the MTA.
 	 */
-	public Packet doData(byte[] data) {
+	public Packet doData() {
 		return new ContinuePacket();
 	}
 
@@ -258,10 +257,11 @@ public abstract class MailFilter {
 	 * <p>
 	 * Type: message-oriented
 	 * 
-	 * @param headers	list of headers already received so far.
+	 * @param name	the header name
+	 * @param value	the value of the header field (might be an empty String)
 	 * @return the answer to send back to the MTA.
 	 */
-	public Packet doHeader(List<Header> headers) {
+	public Packet doHeader(String name, String value) {
 		return new ContinuePacket();
 	}
 	
@@ -273,6 +273,7 @@ public abstract class MailFilter {
 	 * Type: connection-oriented
 	 * 
 	 * @param hostname the hostname of the remote mail-client
+	 * @param family the address family of mail-client to MTA connection 
 	 * @param port 	the port of the remote mail-client connection (-1 if
 	 * 		not available)
 	 * @param info 	IP address of the remote mail-client or UNIX-Path,
@@ -280,7 +281,9 @@ public abstract class MailFilter {
 	 * 
 	 * @return the answer to this packet. Per default a new {@link ContinuePacket}
 	 */
-	public Packet doConnect(String hostname, int port, String info) {
+	public Packet doConnect(String hostname, AddressFamily family, int port, 
+		String info) 
+	{
 		return new ContinuePacket();
 	}
 

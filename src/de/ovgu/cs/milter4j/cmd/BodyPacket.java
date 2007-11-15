@@ -15,6 +15,8 @@ import de.ovgu.cs.milter4j.util.Misc;
 
 /**
  * Sends the body to a filter
+ * <p>
+ * message-oriented
  *  
  * @author 	Jens Elkner
  * @version	$Revision$

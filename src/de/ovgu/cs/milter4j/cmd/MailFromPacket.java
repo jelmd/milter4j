@@ -13,6 +13,8 @@ import java.nio.ByteBuffer;
 
 /**
  * Sends SMTP MAIL command info to milter filters
+ * <p>
+ * message-oriented
  * 
  * @author 	Jens Elkner
  * @version	$Revision$

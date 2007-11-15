@@ -14,6 +14,8 @@ import java.util.HashMap;
 
 /**
  * Provides macros to the filters.
+ * <p>
+ * message-oriented
  * 
  * @author 	Jens Elkner
  * @version	$Revision$

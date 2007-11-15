@@ -10,7 +10,10 @@
 package de.ovgu.cs.milter4j.cmd;
 
 /**
- * QUIT.
+ * Inform the filter, that the client mail session is closed, i.e. no further
+ * messages and thus commands need to be processed.
+ * <p>
+ * connection-oriented
  * 
  * @author 	Jens Elkner
  * @version	$Revision$

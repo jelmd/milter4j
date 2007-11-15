@@ -11,6 +11,8 @@ package de.ovgu.cs.milter4j.cmd;
 
 /**
  * Info, that all available headers have been sent by the MTA.
+ * <p>
+ * message-oriented
  * 
  * @author 	Jens Elkner
  * @version	$Revision$

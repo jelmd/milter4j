@@ -13,8 +13,8 @@ import de.ovgu.cs.milter4j.MacroStage;
 
 /**
  * For a connection-oriented Stage, reject this connection.  For a 
- * message-oriented Stage (except for {@link MacroStage#EOM} and if the message was
- * already aborted) reject this message.  For a recipient-oriented routine, 
+ * message-oriented Stage (except for {@link MacroStage#EOM} and if the message 
+ * was already aborted) reject this message.  For a recipient-oriented routine, 
  * reject the current recipient (but continue processing the current message).
  * 
  * @author 	Jens Elkner

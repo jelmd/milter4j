@@ -11,8 +11,12 @@ package de.ovgu.cs.milter4j.cmd;
 
 import java.nio.ByteBuffer;
 
+import de.ovgu.cs.milter4j.AddressFamily;
+
 /**
  * Sends connection info to milter filters
+ * <p>
+ * connection-oriented
  * 
  * @author 	Jens Elkner
  * @version	$Revision$
@@ -21,6 +25,7 @@ public class ConnectPacket
 	extends Command
 {
 	private String hostname;
+	private AddressFamily family;
 	private int port;
 	private String info;
 	
@@ -32,8 +37,9 @@ public class ConnectPacket
 		super(Type.CONNECT);
 		StringBuilder dst = getString(null, data);
 		hostname = dst.toString();
+		family = AddressFamily.get(data.get());
 		if (data.hasRemaining()) {
-			port = data.getShort();
+			port = 0xFFFF & data.getShort();
 			dst.setLength(0);
 			getString(dst, data);
 			info = dst.indexOf("IPv6:") == 0 ? dst.substring(5) : dst.toString();
@@ -48,6 +54,14 @@ public class ConnectPacket
 	 */
 	public String getHostname() {
 		return hostname;
+	}
+
+	/**
+	 * Get the address family of the client to MTA connection.
+	 * @return	the adress family of the connection
+	 */
+	public AddressFamily getAddressFaily() {
+		return family;
 	}
 
 	/**
@@ -67,4 +81,5 @@ public class ConnectPacket
 	public String getInfo() {
 		return info;
 	}
+	
 }

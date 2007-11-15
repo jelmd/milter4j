@@ -20,6 +20,7 @@ import javax.mail.Message;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import de.ovgu.cs.milter4j.AddressFamily;
 import de.ovgu.cs.milter4j.MailFilter;
 import de.ovgu.cs.milter4j.reply.ContinuePacket;
 import de.ovgu.cs.milter4j.reply.Packet;
@@ -111,9 +112,8 @@ public class RequestDumper
 	 * {@inheritDoc}
 	 */
 	@Override
-	public Packet doData(byte[] data) {
-		StringBuilder buf = Misc.hexdump(data);
-		log.info("doData():" + eol + buf.toString());
+	public Packet doData() {
+		log.info("doData:");
 		return new ContinuePacket();
 	}
 	
@@ -121,12 +121,8 @@ public class RequestDumper
 	 * {@inheritDoc}
 	 */
 	@Override
-	public Packet doHeader(List<Header> headers) {
-		StringBuilder buf = new StringBuilder("doHeader:").append(eol);
-		for (Header h : headers) {
-			buf.append(h.getName()).append(": ").append(h.getValue()).append(eol);
-		}
-		log.info(buf.toString());
+	public Packet doHeader(String name, String value) {
+		log.info("doHeader:" + eol + name + ": " + value);
 		return new ContinuePacket();
 	}
 	
@@ -134,8 +130,11 @@ public class RequestDumper
 	 * {@inheritDoc}
 	 */
 	@Override
-	public Packet doConnect(String hostname, int port, String info) {
-		log.info("doConnect:" + eol + "hostname=" + hostname + "  port=" + port
+	public Packet doConnect(String hostname, AddressFamily family, int port, 
+		String info) 
+	{
+		log.info("doConnect:" + eol + "hostname=" + hostname 
+			+ "  addrFamily=" + family.name() + "  port=" + port
 			+ "  info=" + info);
 		return new ContinuePacket();
 	}
@@ -188,7 +187,7 @@ public class RequestDumper
 		for (Header h : headers) {
 			buf.append(h.getName()).append(": ").append(h.getValue()).append(eol);
 		}
-		buf.append("all Macros:").append(eol);
+		buf.append(eol).append("all Macros:").append(eol);
 		for (Entry<String,String> e : macros.entrySet()) {
 			buf.append(e.getKey()).append("=").append(e.getValue()).append(eol);
 		}
