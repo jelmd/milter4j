@@ -14,6 +14,8 @@ import java.util.concurrent.FutureTask;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
+import de.ovgu.cs.milter4j.jmx.FutureTaskExecutorMXBean;
+
 /**
  * A ThreadPoolExecutor, which will exectue FutureTasks directly,
  * without wrapping them into another FutureTask.
@@ -21,8 +23,8 @@ import java.util.concurrent.TimeUnit;
  * @author 	Jens Elkner
  * @version	$Revision$
  */
-public class FutureTaskExecutor
-	extends ThreadPoolExecutor
+public class FutureTaskExecutor extends ThreadPoolExecutor
+	implements FutureTaskExecutorMXBean
 {
 	/**
 	 * Create the thread.
@@ -51,5 +53,13 @@ public class FutureTaskExecutor
 	public <T> FutureTask<T> submit(FutureTask<T> task) {
         execute(task);
         return task;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public long getKeepAliveTime() {
+		return super.getKeepAliveTime(TimeUnit.SECONDS);
 	}
 }

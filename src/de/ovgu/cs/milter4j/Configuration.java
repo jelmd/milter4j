@@ -31,7 +31,7 @@ import de.ovgu.cs.milter4j.util.Misc;
  * 
  * File format used:
  * <pre>
- * &lt;config port="4444" host="*"&gt;
+ * &lt;config port="4444" host="*" shutdown="4445"&gt;
  * 		&lt;filter class="org.bla.fahsel.milter.Cool" conf="/etc/cool.conf"/&gt;
  * &lt;/config&gt;
  * </pre>
@@ -57,16 +57,22 @@ public class Configuration {
 	public static final String DEFAULT_CONFIG = "/etc/milter.conf";
 	/** the default port, the mail filter server should listen for connections */
 	public static final int DEFAULT_PORT = 4444;
-	
+
+	/** the default port to listen for shutdown instruction */
+	public static final int DEFAULT_SHUTDOWN_PORT = DEFAULT_PORT+1;
+
 	/** property name used to notify config listeners about filter changes */ 
 	public static final String FILTER_CHANGED = "filter";
 	/** property name used to notify config listeners about socket changes */ 
 	public static final String SOCKET_CHANGED = "socket";
+	/** property name used to notify config listeners about shutdown port changes */ 
+	public static final String SHUTDOWN_CHANGED = "shutdown";
 	
 	private File conf;
 	private InetSocketAddress address;
 	private ArrayList<String> filter = new ArrayList<String>();
 	private PropertyChangeSupport pcs;
+	private int shutdownPort;
 	
 	/**
 	 * Create a new Configuration using the given config file.
@@ -74,6 +80,7 @@ public class Configuration {
 	 * @param configFile
 	 */
 	public Configuration(String configFile) {
+		shutdownPort = DEFAULT_SHUTDOWN_PORT;
 		conf = new File(configFile == null ? DEFAULT_CONFIG : configFile);
 		reconfigure();
 	}
@@ -159,8 +166,15 @@ public class Configuration {
 		}
 		ArrayList<String> newfilters = new ArrayList<String>();
 		InetSocketAddress addr = null;
+		int port = DEFAULT_SHUTDOWN_PORT;
 		try {
 			addr = getAddress(reader);
+			String aPort = reader.getAttributeValue(null, "shutdown");
+			try {
+				port = Integer.parseInt(aPort, 10);
+			} catch (Exception e) {
+				port = DEFAULT_SHUTDOWN_PORT;
+			}
 			while (reader.hasNext()) {
 				int res = reader.next();
 				if (res == XMLStreamConstants.END_ELEMENT) {
@@ -199,6 +213,13 @@ public class Configuration {
 			address = addr;
 			if (pcs != null) {
 				pcs.firePropertyChange(SOCKET_CHANGED, old, addr);
+			}
+		}
+		if (port != shutdownPort) {
+			int oldPort = shutdownPort;
+			shutdownPort = port;
+			if ( pcs != null) {
+				pcs.firePropertyChange(SHUTDOWN_CHANGED, oldPort, shutdownPort);
 			}
 		}
 		if (newfilters.size() == 0) {
@@ -251,5 +272,13 @@ public class Configuration {
 		for (String f : conf.filter) {
 			System.out.println(f.replace(";", ": "));
 		}
+	}
+
+	/**
+	 * Get the shutdown port of the server
+	 * @return the shutdownPort.
+	 */
+	public InetSocketAddress getShutdownAddress() {
+		return new InetSocketAddress("localhost", shutdownPort);
 	}
 }

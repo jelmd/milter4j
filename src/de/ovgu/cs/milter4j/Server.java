@@ -12,20 +12,30 @@ package de.ovgu.cs.milter4j;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.nio.ByteBuffer;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.concurrent.ConcurrentSkipListSet;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.TimeUnit;
+
+import javax.management.InstanceAlreadyExistsException;
+import javax.management.MBeanRegistrationException;
+import javax.management.MBeanServer;
+import javax.management.NotCompliantMBeanException;
+import javax.management.ObjectName;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import de.ovgu.cs.milter4j.jmx.ServerMXBean;
 import de.ovgu.cs.milter4j.util.FutureTaskExecutor;
 
 /**
@@ -38,18 +48,31 @@ import de.ovgu.cs.milter4j.util.FutureTaskExecutor;
  * @author 	Jens Elkner
  * @version	$Revision$
  */
-public class Server extends Thread implements PropertyChangeListener {
-	private static final Logger log = LoggerFactory
+public class Server extends Thread 
+	implements PropertyChangeListener, ServerMXBean 
+{
+	static final Logger log = LoggerFactory
 		.getLogger(Server.class);
 	private Configuration cfg;
 	
 	private ServerSocketChannel socketChannel;
 	private boolean socketChanged;
 	private boolean filtersChanged;
+	boolean shutdown = false;
 	
-	private ExecutorService executor;
+	private FutureTaskExecutor executor;
 	private ArrayList<MailFilter> filters;
 	private ConcurrentSkipListSet<Worker> workers;
+	
+	private static final ObjectName getMBeanName(boolean server) { 
+		try {
+			return new ObjectName(Server.class.getPackage().getName() + 
+				(server ? ":type=Server" : ":type=ExecutorService"));
+		} catch (Exception e) {
+			// ignore
+		}
+		return null;
+	}
 	
 	/**
 	 * Create a new Server using the given configuration file.
@@ -63,6 +86,31 @@ public class Server extends Thread implements PropertyChangeListener {
 		cfg.add(this);
 		executor = new FutureTaskExecutor(3, 256, 5L, TimeUnit.MINUTES,
             new SynchronousQueue<Runnable>());
+		MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
+		try {
+			mbs.registerMBean(executor, getMBeanName(false));
+		} catch (InstanceAlreadyExistsException e) {
+			log.warn(e.getLocalizedMessage());
+			if (log.isDebugEnabled()) {
+				log.debug("method()", e);
+			}
+		} catch (MBeanRegistrationException e) {
+			log.warn(e.getLocalizedMessage());
+			if (log.isDebugEnabled()) {
+				log.debug("method()", e);
+			}
+		} catch (NotCompliantMBeanException e) {
+			log.warn(e.getLocalizedMessage());
+			if (log.isDebugEnabled()) {
+				log.debug("method()", e);
+			}
+		} catch (NullPointerException e) {
+			log.warn(e.getLocalizedMessage());
+			if (log.isDebugEnabled()) {
+				log.debug("method()", e);
+			}
+		}
+		configureShutdown();
 		socketChanged = true;
 		filtersChanged = true;
 		reconfigure();
@@ -88,16 +136,19 @@ public class Server extends Thread implements PropertyChangeListener {
 	 */
 	@Override
 	public void run() {
-		while (true) {
+		while (!shutdown) {
 			if (filtersChanged || socketChanged || !socketChannel.isOpen()) {
 				reconfigure();
 			}
 			if (socketChannel == null) {
-				log.warn("Unable to open socket - terminating");
+				log.warn("socket unavailable - terminating");
 				return;
 			}
 			try {
 				SocketChannel sc = socketChannel.accept();
+				if (shutdown) {
+					return;
+				}
 				sc.configureBlocking(true);
 				Worker w = getFreeWorker();
 				w.prepare(sc);
@@ -107,9 +158,11 @@ public class Server extends Thread implements PropertyChangeListener {
 						w.getName());
 				}
 			} catch (IOException e) {
-				log.warn(e.getLocalizedMessage());
-				if (log.isDebugEnabled()) {
-					log.debug("method()", e);
+				if (!shutdown) {
+					log.warn(e.getLocalizedMessage());
+					if (log.isDebugEnabled()) {
+						log.debug("method()", e);
+					}
 				}
 			}
 		}
@@ -223,6 +276,56 @@ public class Server extends Thread implements PropertyChangeListener {
 		}
 	}
 
+	private Future<?> shutdownListener;
+	
+	private void configureShutdown() {
+		if (shutdownListener != null) {
+			shutdownListener.cancel(true);
+		}
+		final InetSocketAddress sa = cfg.getShutdownAddress();
+		Runnable r = new Runnable() {
+			@Override
+			public void run() {
+				ServerSocketChannel ssc = null;
+				try {
+					ssc = ServerSocketChannel.open();
+					ssc.configureBlocking(true);
+					ssc.socket().bind(sa);
+					while (!shutdown) {
+						SocketChannel sc = ssc.accept();
+						try {
+							sc.socket().setKeepAlive(false);
+							sc.socket().setSoTimeout(3 * 1000);
+							ByteBuffer buf = ByteBuffer.allocate(8);
+							int res = sc.read(buf);
+							if (res == 8) {
+								String s = new String(buf.array());
+								if (s.equals("shutdown")) {
+									break;
+								}
+							}
+						} catch (Exception e) {
+							/** ignore */
+						} finally {
+							try { sc.close(); } catch (Exception e) { /* */ } 
+						}
+					}
+					if (!shutdown) {
+						shutdown();
+					}
+				} catch (IOException e) {
+					log.warn("shutdown listener: " + e.getLocalizedMessage());
+					if (log.isDebugEnabled()) {
+						log.debug("method()", e);
+					}
+				} finally {
+					try { ssc.close(); } catch (Exception e) { /* ignore */ }
+				}
+			}
+		};
+		shutdownListener = executor.submit(r);
+	}
+	
 	/**
 	 * Handle the property change request for socket and filter changes.
 	 * @param evt {@inheritDoc}
@@ -239,16 +342,100 @@ public class Server extends Thread implements PropertyChangeListener {
 			filtersChanged = true;
 		} else if (tmp.equals(Configuration.SOCKET_CHANGED)) {
 			socketChanged = true;
+		} else if (tmp.equals(Configuration.SHUTDOWN_CHANGED)) {
+			configureShutdown();
 		}
 	}
 
 	/**
-	 * @param args
+	 * {@inheritDoc}
 	 */
-	public static void main(String[] args) {
-		Server s = new Server(args.length > 0 ? args[0] : null);
-//		s.setDaemon(true);
-		s.start();
+	public int getWorkers() {
+		return workers == null ? 0 : workers.size();
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	public void shutdown() {
+		log.info("shutdown initiated ...");
+		shutdown = true;
+		try {
+			socketChannel.close();
+		} catch (IOException e1) {
+			log.warn(e1.getLocalizedMessage());
+			if (log.isDebugEnabled()) {
+				log.debug("method()", e1);
+			}
+		}
+		cfg.remove(this);
+		executor.shutdown();
+		filters.clear();
+		if (workers != null) {
+			for (Worker worker : workers) {
+				worker.shutdown();
+			}
+		}
+		MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
+		try {
+			mbs.unregisterMBean(getMBeanName(false));
+		} catch (Exception e) {
+			// ignore
+		}
+		try {
+			mbs.unregisterMBean(getMBeanName(true));
+		} catch (Exception e) {
+			// ignore
+		}
+		log.info("done.");
+	}
+
+	/**
+	 * @param args  [configurationFile] ["shutdown"]
+	 * 
+	 * @throws NotCompliantMBeanException 
+	 * @throws MBeanRegistrationException 
+	 * @throws InstanceAlreadyExistsException 
+	 */
+	public static void main(String[] args) 
+		throws InstanceAlreadyExistsException, MBeanRegistrationException, 
+			NotCompliantMBeanException 
+	{
+		boolean shutdown = false;
+		String config = null;
+		if (args.length > 1 && args[1].equals("shutdown")) {
+			shutdown = true;
+			config = args[0];
+		} else if (args.length > 0) {
+			if (args[0].equals("shutdown")) {
+				shutdown = true;
+			} else {
+				config = args[0];
+			}
+		}
+		if (shutdown) {
+			Configuration cfg = new Configuration(config);
+			InetSocketAddress sa = cfg.getShutdownAddress();
+			SocketChannel sc = null;
+			try {
+				sc = SocketChannel.open(sa);
+				sc.write(ByteBuffer.wrap("shutdown".getBytes()));
+				log.info("shutdown command sent");
+			} catch (IOException e) {
+				log.warn(e.getLocalizedMessage());
+				if (log.isDebugEnabled()) {
+					log.debug("method()", e);
+				}
+			} finally {
+				try { sc.close(); } catch (Exception x) { /* ignore */ }
+			}
+		} else {
+			Server s = new Server(config);
+	//		s.setDaemon(true);
+			MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
+			mbs.registerMBean(s, getMBeanName(true));
+			s.start();
+		}
 	}
 
 }
