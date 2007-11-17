@@ -19,10 +19,8 @@ import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
 
-import javax.mail.BodyPart;
 import javax.mail.Header;
 import javax.mail.MessagingException;
-import javax.mail.internet.MimeMultipart;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

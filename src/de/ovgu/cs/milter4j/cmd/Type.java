@@ -82,6 +82,14 @@ public enum Type {
 	}
 
 	/**
+	 * Get the character code represented by this command. See SMFIC_* values.
+	 * @return the byte code as character
+	 */
+	public char getCmd() {
+		return (char) val;
+	}
+
+	/**
 	 * Get the flag to be sent to the MTA, if the filter is not interested in
 	 * receiving this command. See SMFIP_NO* values.
 	 * @return the flag to set.

@@ -145,10 +145,16 @@ public abstract class MailFilter {
 	/**
 	 * Get a list of macros, which should be sent by the MTA, when entering the
 	 * given stage of mail processing.
+	 * <p>
+	 * NOTE: If this method returns a none-<code>null</code> value, at least 
+	 * sendmail ignores all unknown macro names and will not populate/send the 
+	 * standard macros (see 
+	 * <code>O Milter.macros.{connect|helo|envfrom|envrcpt|data|eoh|eom}</code>), 
+	 * but the known macros returned by this method, only!
 	 * 
 	 * @param stage		stage in question
-	 * @return <code>null</code> (default) if no additional macros should be 
-	 * 		negotiated, the list of macro names otherwise. E.g. 
+	 * @return <code>null</code> (default) if standard macros are sufficient, 
+	 * 		the list of macro names otherwise. E.g. 
 	 * 		"{rcpt_mailer}", "{rcpt_host}", ...
 	 */
 	public Set<String> getRequiredMacros(MacroStage stage) {
@@ -221,6 +227,12 @@ public abstract class MailFilter {
 	 * per contract not allowed to modify these maps, since used by other 
 	 * filters as well.
 	 * <p>
+	 * NOTE: For none standard macros sendmail will prepend the single-character 
+	 * name of the command, for whome the macro was prepared for (e.g.
+	 * if "{msg_size}" has been requested, sendmail will sent N{msg_size}=1234
+	 * right before the {@link Type#EOH} command, T{msg_size}=1234 right before 
+	 * the {@link Type#DATA} command and so on).
+	 * <p>
 	 * Only called, if {@link #getCommands()} contains {@link Type#MACRO}.
 	 * <p>
 	 * Type: none (may occure on any stage)
@@ -228,6 +240,9 @@ public abstract class MailFilter {
 	 * @param allMacros	all macros already sent by the MTA for the current 
 	 * 		connection and message. 
 	 * @param newMacros	new macros sent to for the current stage of mail cycle.
+	 * 
+	 * @see  Type#getCmd()
+	 * @see  "sendmail Operation Guide, section 5.2"
 	 */
 	public void doMacros(HashMap<String,String> allMacros, 
 		HashMap<String,String> newMacros) 

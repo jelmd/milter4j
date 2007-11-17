@@ -83,6 +83,17 @@ public class RequestDumper
 		return true;
 	}
 	
+//	/**
+//	 * {@inheritDoc}
+//	 */
+//	@Override
+//	public Set<String> getRequiredMacros(MacroStage stage) {
+//		HashSet<String> macros = new HashSet<String>();
+//		macros.add(Macro.QUEUE.toString());
+//		macros.add(Macro.MSG_SIZE.toString());
+//		return macros;
+//	}
+	
 	// MTA stuff
 	/**
 	 * {@inheritDoc}
