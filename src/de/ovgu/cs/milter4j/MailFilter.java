@@ -227,7 +227,7 @@ public abstract class MailFilter {
 	 * per contract not allowed to modify these maps, since used by other 
 	 * filters as well.
 	 * <p>
-	 * NOTE: For none standard macros sendmail will prepend the single-character 
+	 * NOTE: Depending on the macro, sendmail may prepend the single-character 
 	 * name of the command, for whome the macro was prepared for (e.g.
 	 * if "{msg_size}" has been requested, sendmail will sent N{msg_size}=1234
 	 * right before the {@link Type#EOH} command, T{msg_size}=1234 right before 
