@@ -14,7 +14,6 @@ import java.beans.PropertyChangeListener;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
@@ -49,7 +48,7 @@ import de.ovgu.cs.milter4j.util.FutureTaskExecutor;
  * @version	$Revision$
  */
 public class Server extends Thread 
-	implements PropertyChangeListener, ServerMXBean 
+	implements PropertyChangeListener, ServerMXBean
 {
 	static final Logger log = LoggerFactory
 		.getLogger(Server.class);
@@ -63,11 +62,13 @@ public class Server extends Thread
 	private FutureTaskExecutor executor;
 	private ArrayList<MailFilter> filters;
 	private ConcurrentSkipListSet<Worker> workers;
+	private StatsCollector stats;
 	
 	private static final ObjectName getMBeanName(boolean server) { 
 		try {
-			return new ObjectName(Server.class.getPackage().getName() + 
-				(server ? ":type=Server" : ":type=ExecutorService"));
+			return server 
+				? new ObjectName("Milter4J:type=Server")
+				: new ObjectName("Milter4J:type=ExecutorService");
 		} catch (Exception e) {
 			// ignore
 		}
@@ -86,28 +87,15 @@ public class Server extends Thread
 		cfg.add(this);
 		executor = new FutureTaskExecutor(3, 256, 5L, TimeUnit.MINUTES,
             new SynchronousQueue<Runnable>());
+		stats = new StatsCollector(new int[] { 60, 5 * 60, 30 * 60, 4 * 60 * 60,
+			24 * 60 * 60 });
 		MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
 		try {
 			mbs.registerMBean(executor, getMBeanName(false));
-		} catch (InstanceAlreadyExistsException e) {
+		} catch (Exception e) {
 			log.warn(e.getLocalizedMessage());
 			if (log.isDebugEnabled()) {
-				log.debug("method()", e);
-			}
-		} catch (MBeanRegistrationException e) {
-			log.warn(e.getLocalizedMessage());
-			if (log.isDebugEnabled()) {
-				log.debug("method()", e);
-			}
-		} catch (NotCompliantMBeanException e) {
-			log.warn(e.getLocalizedMessage());
-			if (log.isDebugEnabled()) {
-				log.debug("method()", e);
-			}
-		} catch (NullPointerException e) {
-			log.warn(e.getLocalizedMessage());
-			if (log.isDebugEnabled()) {
-				log.debug("method()", e);
+				log.debug("constructor", e);
 			}
 		}
 		configureShutdown();
@@ -126,7 +114,7 @@ public class Server extends Thread
 				}
 			}
 		}
-		Worker w = new Worker(filters);
+		Worker w = new Worker(filters, stats);
 		workers.add(w);
 		return w;
 	}
@@ -153,6 +141,7 @@ public class Server extends Thread
 				Worker w = getFreeWorker();
 				w.prepare(sc);
 				executor.submit(w);
+				stats.addConnection();
 				if (log.isDebugEnabled()) {
 					log.debug("Worker {} registered for accept()", 
 						w.getName());
@@ -161,7 +150,7 @@ public class Server extends Thread
 				if (!shutdown) {
 					log.warn(e.getLocalizedMessage());
 					if (log.isDebugEnabled()) {
-						log.debug("method()", e);
+						log.debug("run", e);
 					}
 				}
 			}
@@ -191,7 +180,7 @@ public class Server extends Thread
 		} catch (IOException e) {
 			log.warn(e.getLocalizedMessage());
 			if (log.isDebugEnabled()) {
-				log.debug("method()", e);
+				log.debug("initSocket", e);
 			}
 			if (ssc != null) {
 				try { ssc.close(); } catch (Exception x) { /* ignore */ }
@@ -210,6 +199,8 @@ public class Server extends Thread
 		} else {
 			filters.clear();
 		}
+		MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
+		stats.removeAll(mbs);
 		String[] cff = cfg.getFilters();
 		if (cff.length == 0) {
 			return;
@@ -222,40 +213,11 @@ public class Server extends Thread
 				Constructor<?> c = clazz.getConstructor(String.class);
 				MailFilter f = (MailFilter) c.newInstance(tmp[1]);
 				filters.add(f);
-			} catch (ClassNotFoundException e) {
+				stats.add(f.getStatName(), mbs);
+			} catch (Exception e) {
 				log.warn(e.getLocalizedMessage());
 				if (log.isDebugEnabled()) {
-					log.debug("method()", e);
-				}
-			} catch (SecurityException e) {
-				log.warn(e.getLocalizedMessage());
-				if (log.isDebugEnabled()) {
-					log.debug("method()", e);
-				}
-			} catch (NoSuchMethodException e) {
-				log.warn(e.getLocalizedMessage());
-				if (log.isDebugEnabled()) {
-					log.debug("method()", e);
-				}
-			} catch (IllegalArgumentException e) {
-				log.warn(e.getLocalizedMessage());
-				if (log.isDebugEnabled()) {
-					log.debug("method()", e);
-				}
-			} catch (InstantiationException e) {
-				log.warn(e.getLocalizedMessage());
-				if (log.isDebugEnabled()) {
-					log.debug("method()", e);
-				}
-			} catch (IllegalAccessException e) {
-				log.warn(e.getLocalizedMessage());
-				if (log.isDebugEnabled()) {
-					log.debug("method()", e);
-				}
-			} catch (InvocationTargetException e) {
-				log.warn(e.getLocalizedMessage());
-				if (log.isDebugEnabled()) {
-					log.debug("method()", e);
+					log.debug("initFilters", e);
 				}
 			}
 		}
@@ -316,7 +278,7 @@ public class Server extends Thread
 				} catch (IOException e) {
 					log.warn("shutdown listener: " + e.getLocalizedMessage());
 					if (log.isDebugEnabled()) {
-						log.debug("method()", e);
+						log.debug("configureShutdown", e);
 					}
 				} finally {
 					try { ssc.close(); } catch (Exception e) { /* ignore */ }
@@ -352,6 +314,21 @@ public class Server extends Thread
 	 */
 	public int getWorkers() {
 		return workers == null ? 0 : workers.size();
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	public String[] getFilterNames() {
+		String[] list = new String[filters.size()];
+		for (int i=0; i < list.length; i++) {
+			list[i] = filters.get(i).getStatName();
+		}
+		return list;
+	}
+
+	public Integer[] getHistory() {
+		return stats.getHistory();
 	}
 
 	/**
@@ -424,7 +401,7 @@ public class Server extends Thread
 			} catch (IOException e) {
 				log.warn(e.getLocalizedMessage());
 				if (log.isDebugEnabled()) {
-					log.debug("method()", e);
+					log.debug("main", e);
 				}
 			} finally {
 				try { sc.close(); } catch (Exception x) { /* ignore */ }

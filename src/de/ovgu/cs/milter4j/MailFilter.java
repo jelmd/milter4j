@@ -88,6 +88,17 @@ public abstract class MailFilter {
 	/** a descriptive short name of the filter, to be used for logging, etc. 
 	 * @return always a none <code>null</code> value */
 	public abstract String getName();
+
+	/**
+	 * Get the name to be used for collection mail filter statistics. It should
+	 * be a constant value, no matter, on which instance of this filter it gets
+	 * called.
+	 *  
+	 * @return	the stats display name
+	 */
+	public String getStatName() {
+		return getClass().getSimpleName();
+	}
 	
 	/**
 	 * Get a new instance of this filter, which is already configured and 

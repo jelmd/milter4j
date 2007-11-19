@@ -14,4 +14,5 @@
 </root>
 
 <logger name="de.ovgu.cs.milter4j"><level value="INFO"/></logger>
+<logger name="de.ovgu.cs.milter4j.jmx"><level value="DEBUG"/></logger>
 </configuration>

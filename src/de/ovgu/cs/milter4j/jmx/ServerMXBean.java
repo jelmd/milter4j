@@ -10,6 +10,7 @@
 package de.ovgu.cs.milter4j.jmx;
 
 
+
 /**
  * @author 	Jens Elkner
  * @version	$Revision$
@@ -21,7 +22,15 @@ public interface ServerMXBean {
 	 * @return the number of pooled workers
 	 */
 	public int getWorkers();
-	
+
+	/**
+	 * Get a list of all configured filters
+	 * @return a possible empty list
+	 */
+	public String[] getFilterNames();
+
+	public Integer[] getHistory();
+
 	/**
 	 * Shutdown the server gracefully
 	 */

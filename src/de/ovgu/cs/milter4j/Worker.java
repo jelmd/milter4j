@@ -73,6 +73,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 	
 	private long createTime;
 	private String name;
+	private StatsCollector stats;
 
 	// stuff to manage filters
 	ArrayList<MailFilter> filters;
@@ -103,8 +104,10 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 	/**
 	 * Creates a new worker, which manages the given filters.
 	 * @param filters		mail filter to manage
+	 * @param stats where to collect statistics
 	 */
-	public Worker(ArrayList<MailFilter> filters) {
+	public Worker(ArrayList<MailFilter> filters, StatsCollector stats) {
+		this.stats = stats;
 		createTime = System.currentTimeMillis();
 		acceptList = new HashSet<MailFilter>(filters.size());
 		skipList = new HashSet<MailFilter>(filters.size());
@@ -190,6 +193,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 		mtaShouldSentRejected = false;
 		assembleMessage4.clear();
 		macros2negotiate.clear();
+		stats = null;
 	}
 
 	private void send(Packet p) throws IOException {
@@ -338,8 +342,13 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 		Packet result = null;
 		boolean stop = false;
 		for (Packet p : res) {
+			if (p == null) {
+				stats.increment(filter.getStatName(), cmd, 
+					de.ovgu.cs.milter4j.reply.Type.CONTINUE);
+			}
 			if (result == null && p != null && !stop) {
 				de.ovgu.cs.milter4j.reply.Type r = p.getType();
+				stats.increment(filter.getStatName(), cmd, r);
 				switch (r) {
 					case REJECT:
 					case TEMPFAIL:
@@ -419,8 +428,12 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 				final MacroPacket mp = new MacroPacket(data);
 				allMacros.putAll(mp.getMacros());
 				lastMacros.putAll(mp.getMacros());
-				for (MailFilter f : todo) {
-					f.doMacros(allMacros, mp.getMacros());
+				if (todo.size() > 0) {
+					for (MailFilter f : todo) {
+						stats.increment(f.getStatName(), cmd, 
+							de.ovgu.cs.milter4j.reply.Type.CONTINUE);
+						f.doMacros(allMacros, mp.getMacros());
+					}
 				}
 				// no reply at all
 				break;
@@ -583,6 +596,9 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 							{
 								return true;
 							}
+						} else {
+							stats.increment(f.getStatName(), packageType,
+								de.ovgu.cs.milter4j.reply.Type.CONTINUE);
 						}
 					}
 				}
@@ -603,14 +619,26 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 				break;
 			case OPTNEG:
 				final NegotiationPacket rp = new NegotiationPacket(data);
+				for (MailFilter f : filters) {
+					stats.increment(f.getStatName(), packageType, 
+						de.ovgu.cs.milter4j.reply.Type.CONTINUE);
+				}
 				negotiate(rp);
 				send(rp);
 				break;
 			case QUIT:
 			case QUIT_NC:
+				for (MailFilter f : filters) {
+					stats.increment(f.getStatName(), packageType, 
+						de.ovgu.cs.milter4j.reply.Type.CONTINUE);
+				}
 				cleanup(false);
 				return true;
 			case ABORT:
+				for (MailFilter f : filters) {
+					stats.increment(f.getStatName(), packageType, 
+						de.ovgu.cs.milter4j.reply.Type.CONTINUE);
+				}
 				cleanup(true);
 				break;
 			default:
@@ -699,7 +727,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 					// try again
 				}
 				last = channel.isOpen() ? handlePaket(packageType, data) : true;
-			} catch (IOException e) {
+			} catch (Exception e) {
 				log.warn(e.getLocalizedMessage());
 				if (log.isDebugEnabled()) {
 					log.debug("method()", e);

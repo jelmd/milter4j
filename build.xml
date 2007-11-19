@@ -37,7 +37,7 @@
 	<!-- vendor specific stuff -->
 	<property name="vendor.name" value="Jens Elkner" />
 	<property name="vendor.address"
-		value="Jens Elkner, FIN-IWS, Universitätsplatz 2, 39106 Magdeburg, Sachsen-Anhalt, Germany" />
+		value="Jens Elkner, FIN-IWS, Universitaetsplatz 2, 39106 Magdeburg, Sachsen-Anhalt, Germany" />
 	<property name="vendor.email" value="jel+milter4j@iws.cs.uni-magdeburg.de" />
 	<property name="vendor.url" value="http://iws.cs.uni-magdeburg.de/~elkner/" />
 	<property name="license.file"
@@ -88,6 +88,7 @@
 		<fileset dir="${lib.dir}">
 			<patternset refid="libs"/>
 		</fileset>
+		<fileset dir="${java.home}/../lib" includes="jconsole.jar"/>
 	</path>
 	<path id="junit.classpath">
 		<fileset dir="${lib.dir}">
@@ -220,12 +221,27 @@
 	#                              JARS targets                              #
 	##########################################################################
 	-->
-	<target name="jars" depends="compile" 
+	<target name="cp.res" depends="init">
+		<!-- copy over everything, what should be included into the jar -->
+		<copy todir="${build.class.dir}/${codebase}/" includeEmptyDirs="no">
+			<fileset dir="${src.dir}/${codebase}/">
+				<exclude name="**/*.xcf"/>
+				<exclude name="**/.xvpics/*"/>
+				<exclude name="**/design/*"/>
+				<exclude name="**/test/*"/>
+				<include name="**/res/**/*"/>
+			</fileset>
+		</copy>
+		<copy todir="${build.class.dir}/">
+			<fileset dir="${src.dir}" includes="META-INF/**/*"/>
+		</copy>
+	</target>
+	<target name="jars" depends="compile,cp.res" 
 		description="build jar files">
 		<jar destfile="${build.lib.dir}/${ant.project.name}-${product.version}.jar"
 			index="true"
 		>
-			<fileset dir="${build.class.dir}" includes="${codebase}/**/*"/>
+			<fileset dir="${build.class.dir}" includes="${codebase}/**/*,META-INF/**/*"/>
 			<manifest>
 				<attribute name="Implementation-Version" value="${product.version}"/>
 				<attribute name="Specification-Title" value="${product.name}"/>
