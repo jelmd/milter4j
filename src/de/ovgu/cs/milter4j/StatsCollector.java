@@ -9,10 +9,13 @@
  */
 package de.ovgu.cs.milter4j;
 
+import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.locks.ReentrantLock;
 
 import javax.management.MBeanServer;
 
@@ -32,19 +35,40 @@ public class StatsCollector {
 	private static final Logger log = LoggerFactory
 		.getLogger(StatsCollector.class);
 	private HashMap<String, FilterStats> stats;
-
-	private int[] history;
+	
+	private final ReentrantLock lock = new ReentrantLock();
+	private ArrayList<ArrayDeque<Long>> history;
+	private ArrayList<ArrayDeque<Long>> lastTime;
 	private long[] intervall;
-	private long[] lastTime;
+	
 	private long startTime;
 	private int connections;
 	private TimerTask timerTask;
+	private int limit;
 	
 	/**
-	 * Default constructor
+	 * Default constructor.
+	 * <p>
+	 * If you care about memory - roughly the allocation rules for history:
+	 * {@code <var>collectionTimes.length</var> x <var>samples</var> x 4 x 4 x4} 
+	 * whereby <var>sample</var> gets rounded to the next power of two value
+	 * minus 1, if it doesn't already represent a 2<sup>n</sup> value. 
+	 * 
 	 * @param collectionTimes history collection intervalls wrt. connections
+	 * @param samples	hint, how much samples to keep for each intervall 
+	 * 		(should be 2<sup>n</sup>-1)
 	 */
-	public StatsCollector(int[] collectionTimes) {
+	public StatsCollector(int[] collectionTimes, int samples) {
+		// no API to retrieve the internal capacity of deque. But since element
+		// pointers are allocated anyway, we use samples just as a hint
+		limit = samples < 8 
+			? 7 
+			: (samples < Integer.MAX_VALUE ? samples : Integer.MAX_VALUE-1);
+		limit |= (limit >>>  1);
+		limit |= (limit >>>  2);
+		limit |= (limit >>>  4);
+		limit |= (limit >>>  8);
+		limit |= (limit >>> 16);
 		stats = new HashMap<String, FilterStats>();
 		startTime = System.currentTimeMillis();
 		if (collectionTimes != null) {
@@ -55,38 +79,70 @@ public class StatsCollector {
 					break;
 				}
 			}
-			if (count != collectionTimes.length) {
-				history = new int[collectionTimes.length-count];
-				intervall = new long[collectionTimes.length-count];
-				lastTime = new long[collectionTimes.length-count];
-				for (int i=0; i < lastTime.length; i++) {
-					lastTime[i] = startTime;
-				}
-				for (int i=0; i < intervall.length; i++, count++) {
-					intervall[i] = collectionTimes[count] * 1000;
-				}
-				timerTask = new TimerTask() {
-					@Override
-					public void run() {
-						doStats();
-					}
-				};
-				Timer timer = new Timer("HistoryCollector");
-				timer.schedule(timerTask, 0, intervall[0]);
+			int intervalls = collectionTimes.length - count;
+			if (intervalls < 1) {
+				intervalls = 1;
+				collectionTimes = new int[] { Integer.MAX_VALUE };
+			}	
+			intervall = new long[intervalls];
+			history = new ArrayList<ArrayDeque<Long>>(intervalls);
+			lastTime = new ArrayList<ArrayDeque<Long>>(intervalls);
+			Long now = new Long(System.currentTimeMillis());
+			Long zero = Long.valueOf(0);
+			for (int i=0; i < intervalls; i++, count++) {
+				intervall[i] = collectionTimes[count] * 1000;
+				ArrayDeque<Long> q = new ArrayDeque<Long>(limit);
+				history.add(q);
+				q.push(zero);
+				ArrayDeque<Long> q2 = new ArrayDeque<Long>(limit);
+				lastTime.add(q2);
+				q2.push(now);
 			}
+			timerTask = new TimerTask() {
+				@Override
+				public void run() {
+					doStats(false);
+				}
+			};
+			Timer timer = new Timer("HistoryCollector");
+			timer.schedule(timerTask, 0, intervall[0]);
 		}
 	}
 	
-	void doStats() {
+	void doStats(boolean all) {
 		long now = System.currentTimeMillis();
-		int cons = connections;
-		for (int i=0; i < lastTime.length; i++) {
-			if (now - lastTime[i] < intervall[i]) {
-				break;
+		Long cons = new Long(connections);
+		Long nowL = new Long(now);
+		lock.lock();
+		try {
+			// always need to update at least two queues in sync
+			for (int i=0; i < lastTime.size(); i++) {
+				ArrayDeque<Long> tq = lastTime.get(i);
+				if (!all && now - tq.peekFirst().longValue() < intervall[i]) {
+					break;
+				}
+				ArrayDeque<Long> hq = history.get(i);
+				if (hq.size() == limit) {
+					hq.pollLast();
+					tq.pollLast();
+				}
+				hq.addFirst(cons);
+				tq.addFirst(nowL);
 			}
-			history[i] = cons - history[i];
-			lastTime[i] = now;
+		} finally {
+			lock.unlock();
 		}
+		
+	}
+	
+	/**
+	 * Shutdown this instance, i.e. stop the collecting thread and add a 
+	 * stats for all intervalls a last time, not matter, whether the intervall
+	 * limit has been reached.
+	 */
+	public void shutdown() {
+		timerTask.cancel();
+		doStats(true);
 	}
 	
 	/**
@@ -97,18 +153,34 @@ public class StatsCollector {
 	}
 	
 	/**
-	 * Get all history values
-	 * @return	a possible empty array
+	 * Get the connection history values for the given intervall
+	 * @param idx the index of the history collection to return, <code>0</code> 
+	 * 		is corresponds to the collection associated with the first aka 
+	 * 		smallest intervall. 
+	 * @return	<code>null</code> if <var>idx</var> is out of range, the
+	 * 		related collection otherwise.
 	 */
-	public Integer[] getHistory() {
-		if (history == null) {
-			return new Integer[0];
+	public Long[][] getHistory(int idx) {
+		if (idx < 0 || idx >= intervall.length) {
+			return null;
 		}
-		Integer[] h = new Integer[history.length];
-		for (int i=history.length-1; i >= 0; i--) {
-			h[i] = new Integer(history[i]);
+		Long[] h = null;
+		Long[] t = null;
+		lock.lock();
+		try {
+			int size = history.get(idx).size();
+			h = history.get(idx).toArray(new Long[size]);
+			t = lastTime.get(idx).toArray(new Long[size]);
+		} finally {
+			lock.unlock();
 		}
-		return h;
+		// to make it usable, we need to transform it 90 degrees
+		Long[][] vals = new Long[h.length][2];
+		for (int i=h.length-1; i >= 0; i--) {
+			vals[i][0] = t[i];
+			vals[i][1] = h[i];
+		}
+		return vals;
 	}
 	
 	/**

@@ -34,7 +34,6 @@ import javax.management.ObjectName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import de.ovgu.cs.milter4j.jmx.ServerMXBean;
 import de.ovgu.cs.milter4j.util.FutureTaskExecutor;
 
 /**
@@ -47,8 +46,8 @@ import de.ovgu.cs.milter4j.util.FutureTaskExecutor;
  * @author 	Jens Elkner
  * @version	$Revision$
  */
-public class Server extends Thread 
-	implements PropertyChangeListener, ServerMXBean
+public class Server extends Thread
+	implements PropertyChangeListener, ServerMBean
 {
 	static final Logger log = LoggerFactory
 		.getLogger(Server.class);
@@ -88,7 +87,7 @@ public class Server extends Thread
 		executor = new FutureTaskExecutor(3, 256, 5L, TimeUnit.MINUTES,
             new SynchronousQueue<Runnable>());
 		stats = new StatsCollector(new int[] { 60, 5 * 60, 30 * 60, 4 * 60 * 60,
-			24 * 60 * 60 });
+			24 * 60 * 60 }, 365);
 		MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
 		try {
 			mbs.registerMBean(executor, getMBeanName(false));
@@ -327,8 +326,11 @@ public class Server extends Thread
 		return list;
 	}
 
-	public Integer[] getHistory() {
-		return stats.getHistory();
+	/**
+	 * {@inheritDoc}
+	 */
+	public Long[][] getHistory(int idx) {
+		return stats.getHistory(idx);
 	}
 
 	/**
@@ -353,6 +355,7 @@ public class Server extends Thread
 				worker.shutdown();
 			}
 		}
+		stats.shutdown();
 		MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
 		try {
 			mbs.unregisterMBean(getMBeanName(false));

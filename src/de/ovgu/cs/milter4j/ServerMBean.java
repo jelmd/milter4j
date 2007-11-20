@@ -7,7 +7,9 @@
  * This software is the proprietary information of Jens Elkner.
  * Use is subject to license terms.
  */
-package de.ovgu.cs.milter4j.jmx;
+package de.ovgu.cs.milter4j;
+
+import de.ovgu.cs.milter4j.StatsCollector;
 
 
 
@@ -15,7 +17,7 @@ package de.ovgu.cs.milter4j.jmx;
  * @author 	Jens Elkner
  * @version	$Revision$
  */
-public interface ServerMXBean {
+public interface ServerMBean {
 	
 	/**
 	 * Get the number of instantiated workers
@@ -29,7 +31,16 @@ public interface ServerMXBean {
 	 */
 	public String[] getFilterNames();
 
-	public Integer[] getHistory();
+	/**
+	 * Get a history collection about number of connections since start time
+	 * as time;value pair.
+	 * 
+	 * @param idx	the idx of the collection to retrieve
+	 * @return <code>null</code> if not available, the collection otherwise.
+	 * 
+	 * @see StatsCollector#getHistory(int)
+	 */
+	public Long[][] getHistory(int idx);
 
 	/**
 	 * Shutdown the server gracefully
