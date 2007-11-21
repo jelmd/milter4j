@@ -15,6 +15,8 @@ import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.TreeSet;
 
 import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamException;
@@ -31,20 +33,58 @@ import de.ovgu.cs.milter4j.util.Misc;
  * 
  * File format used:
  * <pre>
- * &lt;config port="4444" host="*" shutdown="4445"&gt;
- * 		&lt;filter class="org.bla.fahsel.milter.Cool" conf="/etc/cool.conf"/&gt;
+ * &lt;config port="4444" host="*" shutdown="4445"
+ * 	samples="255" samplerates="1m, 5m, 4h, 1d, 1w"
+ * 	&gt;
+ * 	&lt;filter class="org.bla.fahsel.milter.Cool" conf="/etc/cool.conf"/&gt;
  * &lt;/config&gt;
  * </pre>
  * 
- * If the port parameter is missing, the default port {@value #DEFAULT_PORT}
- * will be used. If the host parameter is missing or is "<code>*</code>",
- * the server binds to all interfaces of the host. Otherwise it binds to the 
- * given interface, only.
- * <p>
- * The attribute <code>class</code> of filter element contains the
- * java class name of a mail filter to use. The optional <code>conf</code>
- * attribute may be used to pass an additional parameter (e.g. configuration
- * filename) to the given class, when the server instantiates it.
+ * The {@code config} attributes have the following meaning:
+ * <dl>
+ * <dt>port</dt>
+ * <dd>
+ * The port, where the filter manager should listen for MTA commands. If it 
+ * is omitted, the default port {@value #DEFAULT_PORT} will be used.
+ * </dd>
+ * <dt>host</dt>
+ * <dd>
+ * The interface, where the filter manager should bind to. If it is ommited or 
+ * is "<code>*</code>", the server binds to all interfaces of the host. 
+ * Otherwise it binds to the given interface, only.
+ * <dd>
+ * <dt>shutdown</dt>
+ * <dd>The port, on which the filter manager should listen for shutdown commands.
+ * It will always bind to the {@code localhost} interface. If ommitted, it will
+ * be set to {@value #DEFAULT_SHUTDOWN_PORT}.
+ * </dd>
+ * <dt>samplerates</dt>
+ * <dd>
+ * A comma separated list of time intervalls, at which "number of connections 
+ * seen" snapshots should be made. If omitted, a reasonable default wil be used.
+ * A time intervall is defined as an int value , optionally followed by 
+ * {@code s} (seconds), {@code m} (minutes), {@code h} (hours), {@code d} (days)
+ * or {@code w} (weeks). If omitted, {@code s} is assumed. 
+ * </dd>
+ * <dt>samples</dt>
+ * <dd>
+ * The number of samples (snapshots), which should be kept for each sample 
+ * intervall. It should be a 2<sup>n</sup>-1 value.
+ * </dd>
+ * </dl>
+ * The {@code filter} may occure several times. Its attributes have the 
+ * following meaning:
+ * <dl>
+ * <dt>class</dt>
+ * <dd>
+ * The fully qualified classname of a mail filter to use.
+ * </dd>
+ * <dt>conf</dt>
+ * <dd>
+ * Optional. It may be used to pass an additional parameter (e.g. configuration
+ * filename) to the given class, when the server instantiates the mail filter.
+ * </dd>
+ * </dl>
  * 
  * @author 	Jens Elkner
  * @version	$Revision$
@@ -67,12 +107,19 @@ public class Configuration {
 	public static final String SOCKET_CHANGED = "socket";
 	/** property name used to notify config listeners about shutdown port changes */ 
 	public static final String SHUTDOWN_CHANGED = "shutdown";
+	/** default sample rate/hiistory size for connection statistics */
+	public static final int DEFAULT_SAMPLES = 255;
+	static final int[] DEFAULT_SAMPLE_RATES = new int[] {
+		60, 5 * 60, 30 * 60, 4 * 60 * 60, 24 * 60 * 60
+	};
 	
 	private File conf;
 	private InetSocketAddress address;
 	private ArrayList<String> filter = new ArrayList<String>();
 	private PropertyChangeSupport pcs;
 	private int shutdownPort;
+	private int[] sampleRate;
+	private int samples;
 	
 	/**
 	 * Create a new Configuration using the given config file.
@@ -175,6 +222,16 @@ public class Configuration {
 			} catch (Exception e) {
 				port = DEFAULT_SHUTDOWN_PORT;
 			}
+			try {
+				samples = Integer.parseInt(reader
+					.getAttributeValue(null, "samples"), 10);
+				if (samples < 1) {
+					samples = DEFAULT_SAMPLES;
+				}
+			} catch (Exception e) {
+				samples = DEFAULT_SAMPLES;
+			}
+			setSampleRates(reader.getAttributeValue(null, "samplerates"));
 			while (reader.hasNext()) {
 				int res = reader.next();
 				if (res == XMLStreamConstants.END_ELEMENT) {
@@ -236,6 +293,56 @@ public class Configuration {
 		log.info("configuration update done");
 	}
 	
+	private void setSampleRates(String param) {
+		if (param == null || param.length() == 0) {
+			sampleRate = DEFAULT_SAMPLE_RATES;
+			return;
+		}
+		String tmp[] = param.split(",");
+		TreeSet<Integer> vals = new TreeSet<Integer>();
+		for (int i=tmp.length-1; i >= 0; i++) {
+			int factor = 1;
+			tmp[i] = tmp[i].trim().toLowerCase();
+			try {
+				boolean suffix = false;
+				if (tmp[i].endsWith("s")) {
+					suffix = true;
+				} else if (tmp[i].endsWith("m")) {
+					suffix = true;
+					factor = 60;
+				} else if (tmp[i].endsWith("h")) {
+					suffix = true;
+					factor = 60 * 60;
+				} else if (tmp[i].endsWith("d")) {
+					suffix = true;
+					factor = 60 * 60 * 24;
+				} else if (tmp[i].endsWith("w")) {
+					suffix = true;
+					factor = 60 * 60 * 24 * 7;
+				}
+				if (suffix) {
+					tmp[i] = tmp[i].substring(0, tmp[i].length()-1);
+				}
+				int val = factor * Integer.parseInt(tmp[i], 10);
+				vals.add(new Integer(val));
+			} catch (Exception e) {
+				log.warn("Invalid intervall value tmp[i] ignored");
+				if (log.isDebugEnabled()) {
+					log.debug("setIntervalls", e);
+				}
+			}
+		}
+		if (vals.size() == 0) {
+			log.info("Using default intervalls for statistics collections");
+			sampleRate = DEFAULT_SAMPLE_RATES;
+			return;
+		}
+		sampleRate = new int[vals.size()];
+		for (int i=vals.size()-1; i >= 0; i--) {
+			sampleRate[i] = vals.pollLast().intValue();
+		}
+	}
+
 	/**
 	 * Add a the given configuration listener.
 	 * @param listener	listener to add
@@ -280,5 +387,22 @@ public class Configuration {
 	 */
 	public InetSocketAddress getShutdownAddress() {
 		return new InetSocketAddress("localhost", shutdownPort);
+	}
+	
+	/**
+	 * Get the number of samples, which should be kept for connection statistics.
+	 * @return always something &gt; <code>0</code>
+	 */
+	public int getSamples() {
+		return samples;
+	}
+	
+	/**
+	 * Get history collection intervalls aka sample rates for connection 
+	 * statistics.
+	 * @return always an array with a size &gt; <code>0</code>
+	 */
+	public int[] getSampleRates() {
+		return Arrays.copyOf(sampleRate, sampleRate.length);
 	}
 }

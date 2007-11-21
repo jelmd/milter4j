@@ -9,6 +9,10 @@
  */
 package de.ovgu.cs.milter4j;
 
+import java.util.Date;
+
+import javax.management.openmbean.TabularData;
+
 import de.ovgu.cs.milter4j.StatsCollector;
 
 
@@ -32,16 +36,43 @@ public interface ServerMBean {
 	public String[] getFilterNames();
 
 	/**
+	 * Get the time, when this server has ben started.
+	 * @return	always a none-null value
+	 */
+	public Date getStartTime();
+
+	/**
+	 * Get the statistic sample rates currently in action.
+	 * @return all sample rates in milliseconds
+	 */
+	public long[] getSampleRates();
+
+	/**
+	 * Convinience method for {@link #getHistory(int, boolean)} with a value of 
+	 * <code>0</code> and <code>true</code>.
+	 * @return the connections history collection with the smallest sample rate
+	 */
+	public TabularData getHistory();
+
+	/**
 	 * Get a history collection about number of connections since start time
 	 * as time;value pair.
 	 * 
 	 * @param idx	the idx of the collection to retrieve
+	 * @param relative if <code>true</code> of the start of the intervall as 
+	 * 		base for the returned corresponding value, the start time of
+	 * 		the server otherwise.
 	 * @return <code>null</code> if not available, the collection otherwise.
 	 * 
-	 * @see StatsCollector#getHistory(int)
+	 * @see StatsCollector#getHistory(int, boolean)
 	 */
-	public Long[][] getHistory(int idx);
+	public TabularData getHistory(int idx, boolean relative);
 
+	/**
+	 * Get the version of this product.
+	 * @return a multi-lined, human-readable version info
+	 */
+	public String getVersion();
 	/**
 	 * Shutdown the server gracefully
 	 */

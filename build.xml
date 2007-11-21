@@ -6,9 +6,9 @@
 	<property name="year.start" value="2007"/>
 	
 	<!-- version -->
-	<property name="version.major" value="0"/>
+	<property name="version.major" value="1"/>
 	<!-- new features, but backward compatible -->
-	<property name="version.minor" value="9"/>
+	<property name="version.minor" value="0"/>
 	<!-- developer built or maintainance relase or bug fix number -->
 	<property name="version.tiny"  value="0"/>
 	<!-- status: alpha | beta | gamma | final | "" ; "" means final -->
@@ -130,6 +130,7 @@
 		<filterset id="main">
 			<filter token="ant.project.name" value="${ant.project.name}" />
 			<filter token="product.name" value="${product.name}" />
+			<filter token="product.version" value="${product.version}" />
 			<filter token="main.class" value="${main.class}" />
 			<filter token="main.class.gui" value="${main.class.gui}" />
 			<filter token="year.start" value="${year.start}" />
@@ -147,7 +148,28 @@
 	#                            Compile targets                             #
 	##########################################################################
 	-->
-	<target name="compile.sdk" depends="init">
+	<target name="compile.versions" depends="init">
+		<copy todir="${build.src.dir}/classes" 
+			includeemptydirs="false"
+			preservelastmodified="true">
+			<fileset dir="${src.dir}" 
+				includes="${version.files}"/>
+			<filterset refid="main" />
+			<filterset>
+				<filter token="build.number" value="${build.number}"/>
+			</filterset>
+		</copy>
+		<javac srcdir="${build.src.dir}/classes" destdir="${build.class.dir}"
+			includes="${version.files}" 
+			optimize="${optimize}" debug="${debug}" debuglevel="${debuglevel}" 
+			deprecation="${deprecation}" classpathref="classpath.extensions"
+			encoding="${compile.encoding}"
+			listfiles="${listfiles}">
+			<compilerarg value="-Xlint:unchecked" compiler="javac1.5" />
+		</javac>
+	</target>
+
+	<target name="compile.sdk" depends="init,compile.versions">
 		<javac srcdir="${src.dir}" destdir="${build.class.dir}"
 			includes="**/*.java"
 			excludes="${version.files}"
@@ -159,7 +181,7 @@
 		</javac>
 	</target>
 
-	<target name="compile.test" depends="compile.sdk">
+	<target name="compile.test" depends="compile.sdk,compile.versions">
 		<javac srcdir="${test.dir}" destdir="${build.class.dir}"
 			includes="**/*.java"
 			excludes="${version.files}"
@@ -212,7 +234,6 @@
 			</classpath>
 			<fileset dir="${src.dir}/${codebase}"/>
 			<link href="${jdkAPI}" />
-			<link href="${commons-httpclientAPI}"/>
 		</javadoc>
 	</target>
 

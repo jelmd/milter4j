@@ -12,12 +12,22 @@ package de.ovgu.cs.milter4j;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.locks.ReentrantLock;
 
 import javax.management.MBeanServer;
+import javax.management.openmbean.CompositeData;
+import javax.management.openmbean.CompositeDataSupport;
+import javax.management.openmbean.CompositeType;
+import javax.management.openmbean.OpenDataException;
+import javax.management.openmbean.OpenType;
+import javax.management.openmbean.SimpleType;
+import javax.management.openmbean.TabularData;
+import javax.management.openmbean.TabularDataSupport;
+import javax.management.openmbean.TabularType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,6 +55,37 @@ public class StatsCollector {
 	private int connections;
 	private TimerTask timerTask;
 	private int limit;
+	
+	private static String[] HIST_NAMES = new String[] { 
+		"Time", 
+		"Connections"
+	};
+	private static String[] HIST_DESC = new String[] {
+		"Time in milliseconds since 01.01.1970 0:00 UTC", 
+		"Number of Connections established since application start" 
+	};
+	private static OpenType<?>[] HIST_TYPES = new OpenType[] { 
+		SimpleType.DATE, 
+		SimpleType.LONG
+	};
+	private static CompositeType HIST_TYPE;
+	private static TabularType HIST_TABLE_TYPE;
+	
+	static {
+		try {
+			HIST_TYPE = new CompositeType(
+				"HistoryEntry",
+				"A time,value pair for connection history",
+				HIST_NAMES, HIST_DESC, HIST_TYPES);
+			HIST_TABLE_TYPE = new TabularType("History", "a history table", 
+				HIST_TYPE, new String[] { HIST_NAMES[0] });
+		} catch (Exception e) {
+			log.warn(e.getLocalizedMessage());
+			if (log.isDebugEnabled()) {
+				log.debug("enclosing_method", e);
+			}
+		}
+	}
 	
 	/**
 	 * Default constructor.
@@ -157,10 +198,13 @@ public class StatsCollector {
 	 * @param idx the index of the history collection to return, <code>0</code> 
 	 * 		is corresponds to the collection associated with the first aka 
 	 * 		smallest intervall. 
+	 * @param relative	if <code>false</code>, return absolute values (number
+	 * 		of connections since start time) instead of relative values (number 
+	 * 		of connections since the start of the intervall). 
 	 * @return	<code>null</code> if <var>idx</var> is out of range, the
 	 * 		related collection otherwise.
 	 */
-	public Long[][] getHistory(int idx) {
+	public TabularData getHistory(int idx, boolean relative) {
 		if (idx < 0 || idx >= intervall.length) {
 			return null;
 		}
@@ -174,13 +218,45 @@ public class StatsCollector {
 		} finally {
 			lock.unlock();
 		}
-		// to make it usable, we need to transform it 90 degrees
-		Long[][] vals = new Long[h.length][2];
+		TabularData data = new TabularDataSupport(HIST_TABLE_TYPE);
+		CompositeData[] cd = new CompositeData[h.length];
+		long prev = 0;
 		for (int i=h.length-1; i >= 0; i--) {
-			vals[i][0] = t[i];
-			vals[i][1] = h[i];
+			Object[] vals = new Object[2];
+			vals[0] = new Date(t[i].longValue());
+			if (relative) {
+				vals[1] = Long.valueOf(h[i].longValue()-prev);
+				prev = h[i].longValue();
+			} else {
+				vals[1] = h[i];
+			}
+			try {
+				cd[i] = new CompositeDataSupport(HIST_TYPE, HIST_NAMES, vals);
+			} catch (OpenDataException e) {
+				log.warn(e.getLocalizedMessage());
+				if (log.isDebugEnabled()) {
+					log.debug("method()", e);
+				}
+			}
 		}
-		return vals;
+		data.putAll(cd);
+		return data;
+	}
+	
+	/**
+	 * Get a list of all sample rates currently in action
+	 * @return all sample rates in milliseconds
+	 */
+	public long[] getSampleRates() {
+		return Arrays.copyOf(intervall, intervall.length);
+	}
+	
+	/**
+	 * Get the time, when this collector has ben started.
+	 * @return	always a none-null value
+	 */
+	public Date getStartTime() {
+		return new Date(startTime);
 	}
 	
 	/**

@@ -48,6 +48,8 @@ import javax.swing.SwingWorker;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
 
+import de.ovgu.cs.milter4j.ServerMBean;
+
 /**
  * An extension to JConsole to display tabular data of simple types correctly.
  * 
@@ -61,7 +63,7 @@ public class FilterStatsConsole
 
 	static final Logger log = Logger.getLogger(FilterStatsConsole.class.getName());
 	MBeanServerConnection server;
-	ServerMXBean sbean;
+	ServerMBean sbean;
 	DefaultComboBoxModel filterComboModel;
 	JComboBox filterCombo;
 	private JButton filterUpdateButton;
@@ -294,7 +296,7 @@ public class FilterStatsConsole
 		server = mbs;
 		try {
 			ObjectName name = new ObjectName("Milter4J:type=Server");
-			sbean = JMX.newMBeanProxy(server, name, ServerMXBean.class, false);
+			sbean = JMX.newMBeanProxy(server, name, ServerMBean.class, false);
 		} catch (Exception e) {
 			log.severe(e.getLocalizedMessage());
 			if (log.isLoggable(Level.FINE)) {

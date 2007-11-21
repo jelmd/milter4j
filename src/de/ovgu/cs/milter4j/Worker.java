@@ -68,7 +68,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 	 */
 	public static final String MTA_CAN_SKIP_KEY = "MTA_UNDERSTANDS_SKIP";
 	
-	/** The currently supported milter API version: {@value #VERSION} */
+	/** The currently supported milter API version: {@value Worker#VERSION} */
 	public static int VERSION = 6;
 	
 	private long createTime;

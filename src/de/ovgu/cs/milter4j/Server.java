@@ -20,6 +20,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.Future;
 import java.util.concurrent.SynchronousQueue;
@@ -30,6 +31,7 @@ import javax.management.MBeanRegistrationException;
 import javax.management.MBeanServer;
 import javax.management.NotCompliantMBeanException;
 import javax.management.ObjectName;
+import javax.management.openmbean.TabularData;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -86,8 +88,7 @@ public class Server extends Thread
 		cfg.add(this);
 		executor = new FutureTaskExecutor(3, 256, 5L, TimeUnit.MINUTES,
             new SynchronousQueue<Runnable>());
-		stats = new StatsCollector(new int[] { 60, 5 * 60, 30 * 60, 4 * 60 * 60,
-			24 * 60 * 60 }, 365);
+		stats = new StatsCollector(cfg.getSampleRates(), cfg.getSamples());
 		MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
 		try {
 			mbs.registerMBean(executor, getMBeanName(false));
@@ -329,10 +330,36 @@ public class Server extends Thread
 	/**
 	 * {@inheritDoc}
 	 */
-	public Long[][] getHistory(int idx) {
-		return stats.getHistory(idx);
+	public Date getStartTime() {
+		return stats.getStartTime();
 	}
-
+	/**
+	 * {@inheritDoc}
+	 */
+	public long[] getSampleRates() {
+		return stats.getSampleRates();
+	}
+	
+	/**
+	 * {@inheritDoc}
+	 */
+	public TabularData getHistory() {
+		return stats.getHistory(0, true);
+	}
+	
+	/**
+	 * {@inheritDoc}
+	 */
+	public TabularData getHistory(int idx, boolean relative) {
+		return stats.getHistory(idx, relative);
+	}
+	
+	/**
+	 * {@inheritDoc}
+	 */
+	public String getVersion() {
+		return new Version().getVersionInfo();
+	}
 	/**
 	 * {@inheritDoc}
 	 */

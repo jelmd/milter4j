@@ -9,7 +9,6 @@
  */
 package de.ovgu.cs.milter4j.jmx;
 
-import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 
 import javax.management.ObjectName;
@@ -156,17 +155,17 @@ public class FilterStats implements FilterStatsMBean {
 	 */
 	public TabularData getStats() {
 		TabularData data = new TabularDataSupport(FILTER_CMD_TYPE);
+		CompositeData[] cd = new CompositeData[stats.length];
 		for (int i=0; i < stats.length; i++) {
-			HashMap<String, Object> items = new HashMap<String, Object>();
-			items.put(RES_NAMES[0], CMD_NAMES[i]);
-			AtomicIntegerArray vals = stats[i];
-			for (int k=0; k < vals.length(); k++) {
-				items.put(RES_NAMES[k+1], Integer.valueOf(vals.get(k)));
+			AtomicIntegerArray line = stats[i];
+			Object[] vals = new Object[line.length()+1];
+			vals[0] = CMD_NAMES[i];
+			for (int k=0; k < line.length(); k++) {
+				vals[k+1] = Integer.valueOf(line.get(k));
 			}
-			CompositeData cd;
 			try {
-				cd = new CompositeDataSupport(FILTER_RES_TYPE, items);
-				data.put(cd);
+				cd[i] = 
+					new CompositeDataSupport(FILTER_RES_TYPE, RES_NAMES, vals);
 			} catch (OpenDataException e) {
 				log.warn(e.getLocalizedMessage());
 				if (log.isDebugEnabled()) {
@@ -174,6 +173,7 @@ public class FilterStats implements FilterStatsMBean {
 				}
 			}
 		}
+		data.putAll(cd);
 		return data;
 	}
 
