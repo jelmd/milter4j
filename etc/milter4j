@@ -1,0 +1,27 @@
+#!/sbin/sh
+
+# $Id$
+#
+# description:
+#   Startup/shutdown script for the milter4j mail filter daemon
+#
+# default: S/K39 0/K39 1/K39 2/S80
+
+BASEDIR=/opt
+
+case "$1" in
+'start')
+	[ -f /etc/milter.conf ] && [ -f ${BASEDIR}/milter4j/bin/milter4j ] || exit 0
+	${BASEDIR}/milter4j/bin/milter4j > /var/log/milter4j.log 2>&1 &
+	;;
+
+'stop')
+	[ -f /etc/milter.conf ] && [ -f ${BASEDIR}/milter4j/bin/milter4j ] || exit 0
+	${BASEDIR}/milter4j/bin/milter4j shutdown
+	;;
+
+*)
+	echo "Usage: $0 { start | stop }"
+	exit 1
+	;;
+esac
