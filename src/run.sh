@@ -5,6 +5,16 @@ JAVA_HOME=${JAVA_HOME:-/local/apps/jdk}
 # additional flags for the java virtual machine
 JVM_FLAGS="-Djava.awt.headless=true"
 
+# enable JMX tools to get information about the server and its stats frome remote
+JVM_FLAGS="$JVM_FLAGS -Dcom.sun.management.jmxremote.port=12345"
+# if one has no firewalls, dedicated connection machines one would probably
+# inverse these settings
+JVM_FLAGS="$JVM_FLAGS -Dcom.sun.management.jmxremote.authenticate=false"
+JVM_FLAGS="$JVM_FLAGS -Dcom.sun.management.jmxremote.ssl=false"
+
+# just in case, somebody wants to attach a debugger from remote
+#JAVA_OPTS="$JAVA_OPTS -agentlib:jdwp=transport=dt_socket,address=localhost:localhost:45678,suspend=n,server=y"
+
 #=========================================================================
 # no further changes required
 #=========================================================================
@@ -37,7 +47,7 @@ if [ -z "$JVM_FLAGS" ]; then
 	JVM_FLAGS=" "
 fi
 
-while getopts "hd:scaD:Pl:g:p" option ; do
+while getopts "h" option ; do
 	case "$option" in
 		h) Usage; exit 0 ;;
 	esac

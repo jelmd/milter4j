@@ -256,7 +256,10 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 			skip |= Option.RCPT_REJ.getCode();
 		}
 		// for transparence reasons we never set HDR_LEADSPC
-		p.setVersion(VERSION);
+		int version = p.getVersion();
+		if (version < 2 || version > VERSION) {
+			p.setVersion(VERSION);
+		}
 		p.setModificationMask(Modification.getCode(mods2handle));
 		p.setProtocolMask(skip);
 		p.setStageMacros(macros2negotiate);

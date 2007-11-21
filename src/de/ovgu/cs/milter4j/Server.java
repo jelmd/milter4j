@@ -353,7 +353,14 @@ public class Server extends Thread
 	public TabularData getHistory(int idx, boolean relative) {
 		return stats.getHistory(idx, relative);
 	}
-	
+
+	/**
+	 * {@inheritDoc}
+	 */
+	public long getConnections() {
+		return stats.getConnections();
+	}
+
 	/**
 	 * {@inheritDoc}
 	 */

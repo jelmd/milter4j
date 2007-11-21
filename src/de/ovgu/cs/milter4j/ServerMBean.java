@@ -74,6 +74,12 @@ public interface ServerMBean {
 	 */
 	public String getVersion();
 	/**
+	 * Get the number of connections since the start of this collector.
+	 * @return	number of connections
+	 */
+	public long getConnections();
+
+	/**
 	 * Shutdown the server gracefully
 	 */
 	public void shutdown();

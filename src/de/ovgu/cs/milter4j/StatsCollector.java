@@ -194,6 +194,14 @@ public class StatsCollector {
 	}
 	
 	/**
+	 * Get the number of connections since the start of this collector.
+	 * @return	number of connections
+	 */
+	public long getConnections() {
+		return connections;
+	}
+	
+	/**
 	 * Get the connection history values for the given intervall
 	 * @param idx the index of the history collection to return, <code>0</code> 
 	 * 		is corresponds to the collection associated with the first aka 
