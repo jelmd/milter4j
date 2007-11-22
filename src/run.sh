@@ -5,12 +5,14 @@ JAVA_HOME=${JAVA_HOME:-/local/apps/jdk}
 # additional flags for the java virtual machine
 JVM_FLAGS="-Djava.awt.headless=true"
 
+if [ "$1" != "shutdown" ]; then
 # enable JMX tools to get information about the server and its stats frome remote
 JVM_FLAGS="$JVM_FLAGS -Dcom.sun.management.jmxremote.port=12345"
 # if one has no firewalls, dedicated connection machines one would probably
 # inverse these settings
 JVM_FLAGS="$JVM_FLAGS -Dcom.sun.management.jmxremote.authenticate=false"
 JVM_FLAGS="$JVM_FLAGS -Dcom.sun.management.jmxremote.ssl=false"
+fi
 
 # just in case, somebody wants to attach a debugger from remote
 #JAVA_OPTS="$JAVA_OPTS -agentlib:jdwp=transport=dt_socket,address=localhost:localhost:45678,suspend=n,server=y"

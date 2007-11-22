@@ -22,14 +22,10 @@ import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.concurrent.ConcurrentSkipListSet;
-import java.util.concurrent.Future;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.TimeUnit;
 
-import javax.management.InstanceAlreadyExistsException;
-import javax.management.MBeanRegistrationException;
 import javax.management.MBeanServer;
-import javax.management.NotCompliantMBeanException;
 import javax.management.ObjectName;
 import javax.management.openmbean.TabularData;
 
@@ -102,6 +98,14 @@ public class Server extends Thread
 		socketChanged = true;
 		filtersChanged = true;
 		reconfigure();
+		try {
+			mbs.registerMBean(this, getMBeanName(true));
+		} catch (Exception e) {
+			log.warn(e.getLocalizedMessage());
+			if (log.isDebugEnabled()) {
+				log.debug("constructor", e);
+			}
+		}
 	}
 
 	private Worker getFreeWorker() {
@@ -238,12 +242,7 @@ public class Server extends Thread
 		}
 	}
 
-	private Future<?> shutdownListener;
-	
 	private void configureShutdown() {
-		if (shutdownListener != null) {
-			shutdownListener.cancel(true);
-		}
 		final InetSocketAddress sa = cfg.getShutdownAddress();
 		Runnable r = new Runnable() {
 			@Override
@@ -272,9 +271,6 @@ public class Server extends Thread
 							try { sc.close(); } catch (Exception e) { /* */ } 
 						}
 					}
-					if (!shutdown) {
-						shutdown();
-					}
 				} catch (IOException e) {
 					log.warn("shutdown listener: " + e.getLocalizedMessage());
 					if (log.isDebugEnabled()) {
@@ -283,9 +279,12 @@ public class Server extends Thread
 				} finally {
 					try { ssc.close(); } catch (Exception e) { /* ignore */ }
 				}
+				shutdown();
 			}
 		};
-		shutdownListener = executor.submit(r);
+		// don't put it into the executor - might be shutdowned before this one
+		// gets into action
+		new Thread(r, "ShutdownListener").start();
 	}
 	
 	/**
@@ -372,6 +371,10 @@ public class Server extends Thread
 	 */
 	public void shutdown() {
 		log.info("shutdown initiated ...");
+		if (shutdown) {
+			// don't need to do that several times ;-)
+			return;
+		}
 		shutdown = true;
 		try {
 			socketChannel.close();
@@ -389,8 +392,9 @@ public class Server extends Thread
 				worker.shutdown();
 			}
 		}
-		stats.shutdown();
 		MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
+		stats.removeAll(mbs);
+		stats.shutdown();
 		try {
 			mbs.unregisterMBean(getMBeanName(false));
 		} catch (Exception e) {
@@ -406,15 +410,8 @@ public class Server extends Thread
 
 	/**
 	 * @param args  [configurationFile] ["shutdown"]
-	 * 
-	 * @throws NotCompliantMBeanException 
-	 * @throws MBeanRegistrationException 
-	 * @throws InstanceAlreadyExistsException 
 	 */
-	public static void main(String[] args) 
-		throws InstanceAlreadyExistsException, MBeanRegistrationException, 
-			NotCompliantMBeanException 
-	{
+	public static void main(String[] args) {
 		boolean shutdown = false;
 		String config = null;
 		if (args.length > 1 && args[1].equals("shutdown")) {
@@ -446,8 +443,6 @@ public class Server extends Thread
 		} else {
 			Server s = new Server(config);
 	//		s.setDaemon(true);
-			MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-			mbs.registerMBean(s, getMBeanName(true));
 			s.start();
 		}
 	}
