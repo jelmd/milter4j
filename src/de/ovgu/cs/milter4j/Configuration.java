@@ -72,7 +72,7 @@ import de.ovgu.cs.milter4j.util.Misc;
  * intervall. It should be a 2<sup>n</sup>-1 value.
  * </dd>
  * </dl>
- * The {@code filter} may occure several times. Its attributes have the 
+ * The {@code filter} element may occure several times. Its attributes have the 
  * following meaning:
  * <dl>
  * <dt>class</dt>
@@ -81,7 +81,7 @@ import de.ovgu.cs.milter4j.util.Misc;
  * </dd>
  * <dt>conf</dt>
  * <dd>
- * Optional. It may be used to pass an additional parameter (e.g. configuration
+ * It may be used to pass an additional parameter (e.g. configuration
  * filename) to the given class, when the server instantiates the mail filter.
  * </dd>
  * </dl>

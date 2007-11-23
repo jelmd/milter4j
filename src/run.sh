@@ -6,16 +6,16 @@ JAVA_HOME=${JAVA_HOME:-/local/apps/jdk}
 JVM_FLAGS="-Djava.awt.headless=true"
 
 if [ "$1" != "shutdown" ]; then
-# enable JMX tools to get information about the server and its stats frome remote
-JVM_FLAGS="$JVM_FLAGS -Dcom.sun.management.jmxremote.port=12345"
-# if one has no firewalls, dedicated connection machines one would probably
-# inverse these settings
-JVM_FLAGS="$JVM_FLAGS -Dcom.sun.management.jmxremote.authenticate=false"
-JVM_FLAGS="$JVM_FLAGS -Dcom.sun.management.jmxremote.ssl=false"
+	# enable JMX tools to get information about the server and its stats frome remote
+	JVM_FLAGS="$JVM_FLAGS -Dcom.sun.management.jmxremote.port=12345"
+	# if one has no firewalls, dedicated connection machines one would probably
+	# inverse these settings
+	JVM_FLAGS="$JVM_FLAGS -Dcom.sun.management.jmxremote.authenticate=false"
+	JVM_FLAGS="$JVM_FLAGS -Dcom.sun.management.jmxremote.ssl=false"
+	
+	# just in case, somebody wants to attach a debugger from remote
+	#JAVA_OPTS="-agentlib:jdwp=transport=dt_socket,address=45678,server=y,suspend=n"
 fi
-
-# just in case, somebody wants to attach a debugger from remote
-#JAVA_OPTS="$JAVA_OPTS -agentlib:jdwp=transport=dt_socket,address=localhost:localhost:45678,suspend=n,server=y"
 
 #=========================================================================
 # no further changes required
@@ -26,10 +26,10 @@ export LC_CTYPE=de_DE
 
 Usage() {
 cat<<EOF
-Usage: ${0} \\
-	[-h]
-	
-	-h			print this help and exit
+Usage: ${0} [-h] [shutdown]
+
+    -h        print this help and exit
+    shutdown  stop the currently running instance
 EOF
 }
 
@@ -99,4 +99,4 @@ if [ -d "${BASE_DIR}/lib/endorsed" ]; then
 	fi
 fi
 
-exec $JAVA ${JVM_FLAGS} $LOCAL_CLASSPATH de.ovgu.cs.milter4j.$START_CLASS $@
+exec $JAVA ${JVM_FLAGS} ${JAVA_OPTS} $LOCAL_CLASSPATH de.ovgu.cs.milter4j.$START_CLASS $@

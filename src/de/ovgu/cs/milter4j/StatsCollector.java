@@ -53,6 +53,7 @@ public class StatsCollector {
 	
 	private long startTime;
 	private int connections;
+	private Timer timer;
 	private TimerTask timerTask;
 	private int limit;
 	
@@ -145,7 +146,7 @@ public class StatsCollector {
 					doStats(false);
 				}
 			};
-			Timer timer = new Timer("HistoryCollector");
+			timer = new Timer("HistoryCollector");
 			timer.schedule(timerTask, 0, intervall[0]);
 		}
 	}
@@ -154,9 +155,9 @@ public class StatsCollector {
 		long now = System.currentTimeMillis();
 		Long cons = new Long(connections);
 		Long nowL = new Long(now);
+		// always need to update at least two queues at a time in sync
 		lock.lock();
 		try {
-			// always need to update at least two queues in sync
 			for (int i=0; i < lastTime.size(); i++) {
 				ArrayDeque<Long> tq = lastTime.get(i);
 				if (!all && now - tq.peekFirst().longValue() < intervall[i]) {
@@ -183,6 +184,7 @@ public class StatsCollector {
 	 */
 	public void shutdown() {
 		timerTask.cancel();
+		timer.cancel();
 		doStats(true);
 	}
 	

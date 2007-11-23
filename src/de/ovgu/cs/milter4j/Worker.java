@@ -12,6 +12,7 @@ package de.ovgu.cs.milter4j;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.AsynchronousCloseException;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -22,6 +23,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReentrantLock;
 
 import javax.mail.Header;
 
@@ -100,13 +102,15 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 	ArrayList<Header> headers = new ArrayList<Header>();
 	ArrayList<Packet> toSend = new ArrayList<Packet>();
 	HashMap<MacroStage,HashSet<String>> macros2negotiate;
-
+	private ReentrantLock configLock;
+	
 	/**
 	 * Creates a new worker, which manages the given filters.
 	 * @param filters		mail filter to manage
 	 * @param stats where to collect statistics
 	 */
 	public Worker(ArrayList<MailFilter> filters, StatsCollector stats) {
+		configLock = new ReentrantLock();
 		this.stats = stats;
 		createTime = System.currentTimeMillis();
 		acceptList = new HashSet<MailFilter>(filters.size());
@@ -140,60 +144,73 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 	 * @param filters	list of mail filters to manage
 	 */
 	private void reconfigure(ArrayList<MailFilter> filters) {
-		this.filters = filters;
-		this.filters.trimToSize();
-		cmds2handle = EnumSet.noneOf(Type.class);
-		mods2handle = EnumSet.noneOf(Modification.class);
-		mtaShouldSentRejected = false;
-		assembleMessage4 = new HashSet<MailFilter>();
-		macros2negotiate = new HashMap<MacroStage, HashSet<String>>(7);
-		MacroStage[] stages = MacroStage.values();
-		for (int i=stages.length-1; i >= 0; i--) {
-			macros2negotiate.put(stages[i], new HashSet<String>());
-		}
-		for (MailFilter f : filters) {
-			EnumSet<Type> t = f.getCommands();
-			if (t != null) {
-				cmds2handle.addAll(t);
-			}
-			EnumSet<Modification> m = f.getModifications();
-			if (m != null) {
-				mods2handle.addAll(m);
-			}
-			mtaShouldSentRejected |= f.wantsRejectedRecipients();
-			if (f.reassembleMail() && t.contains(Type.BODY) 
-				&& t.contains(Type.BODYEOB)) 
-			{
-				assembleMessage4.add(f);
-			}
+		configLock.lock();
+		try {
+			this.filters = filters;
+			this.filters.trimToSize();
+			cmds2handle = EnumSet.noneOf(Type.class);
+			mods2handle = EnumSet.noneOf(Modification.class);
+			mtaShouldSentRejected = false;
+			assembleMessage4 = new HashSet<MailFilter>();
+			macros2negotiate = new HashMap<MacroStage, HashSet<String>>(7);
+			MacroStage[] stages = MacroStage.values();
 			for (int i=stages.length-1; i >= 0; i--) {
-				Set<String> s = f.getRequiredMacros(stages[i]);
-				if (s != null) {
-					macros2negotiate.get(stages[i]).addAll(s);
+				macros2negotiate.put(stages[i], new HashSet<String>());
+			}
+			for (MailFilter f : filters) {
+				EnumSet<Type> t = f.getCommands();
+				if (t != null) {
+					cmds2handle.addAll(t);
+				}
+				EnumSet<Modification> m = f.getModifications();
+				if (m != null) {
+					mods2handle.addAll(m);
+				}
+				mtaShouldSentRejected |= f.wantsRejectedRecipients();
+				if (f.reassembleMail() && t.contains(Type.BODY) 
+					&& t.contains(Type.BODYEOB)) 
+				{
+					assembleMessage4.add(f);
+				}
+				for (int i=stages.length-1; i >= 0; i--) {
+					Set<String> s = f.getRequiredMacros(stages[i]);
+					if (s != null) {
+						macros2negotiate.get(stages[i]).addAll(s);
+					}
 				}
 			}
+			NegotiationPacket p = new NegotiationPacket(null);
+			// let the package normalize and fetch the normalized map
+			for (int i=stages.length-1; i >= 0; i--) {
+				p.setMacros(stages[i], macros2negotiate.get(stages[i]));
+			}
+			macros2negotiate = p.getStageMacros();
+		} finally {
+			configLock.unlock();
 		}
-		NegotiationPacket p = new NegotiationPacket(null);
-		// let the package normalize and fetch the normalized map
-		for (int i=stages.length-1; i >= 0; i--) {
-			p.setMacros(stages[i], macros2negotiate.get(stages[i]));
-		}
-		macros2negotiate = p.getStageMacros();
 	}
 
 	/**
 	 * Shutdown this worker.
 	 */
 	public void shutdown() {
-		packageType = Type.QUIT;
-		cleanup(false);
-		filters.clear();
-		cmds2handle.clear();
-		mods2handle.clear();
-		mtaShouldSentRejected = false;
-		assembleMessage4.clear();
-		macros2negotiate.clear();
-		stats = null;
+		// synced to avoid reconfig and shutdown at the same time
+		configLock.lock();
+		try {
+			packageType = Type.QUIT;
+			cleanup(false);
+			filters.clear();
+			cmds2handle.clear();
+			mods2handle.clear();
+			mtaShouldSentRejected = false;
+			assembleMessage4.clear();
+			if (macros2negotiate != null) {
+				macros2negotiate.clear();
+			}
+			stats = null;
+		} finally {
+			configLock.unlock();
+		}
 	}
 
 	private void send(Packet p) throws IOException {
@@ -232,7 +249,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 			log.debug("Trying to read {} buffer ({} byte)", 
 				(buf == header ? "header" : "data"), buf.remaining());
 		}
-		while (buf.hasRemaining() && ((count = channel.read(buf)) > 0)) {
+		while (buf.hasRemaining() && ((count = channel.read(buf)) != -1)) {
 			// read again
 		}
 		if (count == -1) {
@@ -315,7 +332,9 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 				}
 			}
 			connectionMacros.clear();
-			try { channel.close(); } catch (IOException e) { /* ignore */ }
+			try { channel.close(); } catch (IOException e) { 
+				/* ignore */ 
+			}
 			log.debug("channel closed");
 			channel = null;
 		}
@@ -729,11 +748,18 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 				while(channel.isOpen() && !readPacket()) {
 					// try again
 				}
-				last = channel.isOpen() ? handlePaket(packageType, data) : true;
+				last = channel != null && channel.isOpen() && data != null
+					? handlePaket(packageType, data) 
+					: true;
+			} catch (AsynchronousCloseException e1) {
+				// that's ok - may occure, if shutdown gets called
 			} catch (Exception e) {
-				log.warn(e.getLocalizedMessage());
-				if (log.isDebugEnabled()) {
-					log.debug("method()", e);
+				if (channel != null) {
+					log.warn(e.getClass().getSimpleName() 
+						+ " " + e.getLocalizedMessage());
+					if (log.isDebugEnabled()) {
+						log.debug("method()", e);
+					}
 				}
 				last = true;
 			}
