@@ -25,7 +25,7 @@ public class Version {
 	private static final String yearEnd = "@year.end@";
 	private static final String vendorName = "@vendor.name@";
 	private static final String vendorURL = "@vendor.url@";
-	private static final String buildNumber = "@build.number@";
+	private static final String buildNumber = "b@build.number@";
 	
 	/**
 	 * Get the offical name of this product
