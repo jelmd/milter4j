@@ -22,6 +22,7 @@ import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.TimeUnit;
 
@@ -136,13 +137,15 @@ public class Server extends Thread
 				log.warn("socket unavailable - terminating");
 				return;
 			}
+			SocketChannel sc = null;
+			Worker w = null;
 			try {
-				SocketChannel sc = socketChannel.accept();
+				sc = socketChannel.accept();
 				if (shutdown) {
 					return;
 				}
 				sc.configureBlocking(true);
-				Worker w = getFreeWorker();
+				w = getFreeWorker();
 				w.prepare(sc);
 				executor.submit(w);
 				stats.addConnection();
@@ -150,13 +153,24 @@ public class Server extends Thread
 					log.debug("Worker {} registered for accept()", 
 						w.getName());
 				}
-			} catch (IOException e) {
+				sc = null; // indicate, everything is ok
+			} catch (RejectedExecutionException e) {
+				log.warn(e.getLocalizedMessage());
+				if (log.isDebugEnabled()) {
+					log.debug("run", e);
+				}
+				w.prepare(null);
+			} catch (Exception e) {
+				// might be IO or RejectedExecutionException
 				if (!shutdown) {
 					log.warn(e.getLocalizedMessage());
 					if (log.isDebugEnabled()) {
 						log.debug("run", e);
 					}
 				}
+			}
+			if (sc != null && sc.isOpen()) {
+				try { sc.close(); } catch (Exception e1) { /* ignore */ }
 			}
 		}
 	}
