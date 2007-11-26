@@ -61,6 +61,7 @@ public class Server extends Thread
 	private ArrayList<MailFilter> filters;
 	private ConcurrentSkipListSet<Worker> workers;
 	private StatsCollector stats;
+	Thread shutdownListener;
 	
 	private static final ObjectName getMBeanName(boolean server) { 
 		try {
@@ -286,19 +287,23 @@ public class Server extends Thread
 						}
 					}
 				} catch (IOException e) {
-					log.warn("shutdown listener: " + e.getLocalizedMessage());
-					if (log.isDebugEnabled()) {
-						log.debug("configureShutdown", e);
+					if (!shutdown) {
+						log.warn("shutdown listener: " + e.getLocalizedMessage());
+						if (log.isDebugEnabled()) {
+							log.debug("configureShutdown", e);
+						}
 					}
 				} finally {
 					try { ssc.close(); } catch (Exception e) { /* ignore */ }
 				}
+				shutdownListener = null;
 				shutdown();
 			}
 		};
 		// don't put it into the executor - might be shutdowned before this one
 		// gets into action
-		new Thread(r, "ShutdownListener").start();
+		shutdownListener = new Thread(r, "ShutdownListener");
+		shutdownListener.start();
 	}
 	
 	/**
@@ -390,6 +395,9 @@ public class Server extends Thread
 			return;
 		}
 		shutdown = true;
+		if (shutdownListener != null) {
+			shutdownListener.interrupt();
+		}
 		try {
 			socketChannel.close();
 		} catch (IOException e1) {
