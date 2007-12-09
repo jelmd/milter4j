@@ -8,16 +8,17 @@
 # default: S/K39 0/K39 1/K39 2/S80
 
 BASEDIR=/opt
+CONF=/etc/milter.conf
 
 case "$1" in
 'start')
-	[ -f /etc/milter.conf ] && [ -f ${BASEDIR}/milter4j/bin/milter4j ] || exit 0
-	${BASEDIR}/milter4j/bin/milter4j > /var/log/milter4j.log 2>&1 &
+	[ -f ${CONF} ] && [ -f ${BASEDIR}/milter4j/bin/milter4j ] || exit 0
+	${BASEDIR}/milter4j/bin/milter4j ${CONF} > /var/log/milter4j.log 2>&1 &
 	;;
 
 'stop')
-	[ -f /etc/milter.conf ] && [ -f ${BASEDIR}/milter4j/bin/milter4j ] || exit 0
-	${BASEDIR}/milter4j/bin/milter4j shutdown
+	[ -f ${CONF} ] && [ -f ${BASEDIR}/milter4j/bin/milter4j ] || exit 0
+	${BASEDIR}/milter4j/bin/milter4j ${CONF} shutdown
 	;;
 
 *)
