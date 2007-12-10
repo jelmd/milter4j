@@ -228,7 +228,7 @@ public class Server extends Thread
 		for (int i=0; i < cff.length; i++) {
 			String[] tmp = cff[i].split(";", 2);
 			try {
-				Class<?> clazz = Class.forName(tmp[i]);
+				Class<?> clazz = Class.forName(tmp[0]);
 				Constructor<?> c = clazz.getConstructor(String.class);
 				MailFilter f = (MailFilter) c.newInstance(tmp[1]);
 				filters.add(f);
