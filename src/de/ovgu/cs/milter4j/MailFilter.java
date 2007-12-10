@@ -139,11 +139,10 @@ public abstract class MailFilter {
 	 * 		<li>{@link Type#QUIT}</li>
 	 * </ul>
 	 * On the other side, the following commands are handled by the managing
-	 * server, i.e. are ignored if include in the result and the client will 
+	 * server, i.e. are ignored if included in the result and the client will 
 	 * never see those commands:
 	 * <ul>
 	 * 		<li>{@link Type#OPTNEG}</li>
-	 * 		<li>{@link Type#MACRO}</li>
 	 * </ul>
 	 * 
 	 * @return a set of commands (default: all available commands). Might be 
