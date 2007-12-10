@@ -72,7 +72,7 @@ public class ReplyPacket
 	 */
 	public ReplyPacket(int reply, String xcode, String... messages) {
 		super(Type.REPLYCODE);
-		if (reply < 400 || reply > 500) {
+		if (reply < 400 || reply > 599) {
 			throw new IllegalArgumentException("reply code '" + reply 
 				+ "' out of range");
 		}
