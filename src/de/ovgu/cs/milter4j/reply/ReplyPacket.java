@@ -76,6 +76,7 @@ public class ReplyPacket
 			throw new IllegalArgumentException("reply code '" + reply 
 				+ "' out of range");
 		}
+		this.reply = reply;
 		if (xcode != null) {
 			this.xcode = checkXcode(xcode, reply);
 			if (this.xcode == null) {

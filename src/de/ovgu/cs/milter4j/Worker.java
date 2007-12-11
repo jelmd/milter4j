@@ -325,10 +325,8 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 			}
 		} else {
 			if (filters.size() > 0) {
-				if (filters.size() > 0) {
-					for (MailFilter f : filters) {
-						f.doQuit();
-					}
+				for (MailFilter f : filters) {
+					f.doQuit();
 				}
 			}
 			connectionMacros.clear();
@@ -428,6 +426,9 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 						log.warn("filter {} replied with unknown packet {}",
 							filter.getName(), r);
 				}
+			}
+			if (stop) {
+				break;
 			}
 		}
 		if (result != null) {
