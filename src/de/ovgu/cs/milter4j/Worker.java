@@ -52,6 +52,16 @@ import de.ovgu.cs.milter4j.util.Mail;
  * <p>
  * For transparency reasons, this worker does not support/will not negotiate 
  * {@link Option#HDR_LEADSPC}.
+ * <p>
+ * This worker honors the the {@link AcceptPacket#isFinal()} property, i.e. if a
+ * mail filter returns an accept packet, where the {@code isFinal()} returns
+ * {@code true}, it stops processing the message immediately (doesn't ask any 
+ * other configured filters to process the current command) and returns the
+ * accept message to the MTA.
+ * <p>
+ * <b>NOTE</b>: The order of the filters in the configuration file is important!
+ * So if a filter returns a reject answer, other filters are not asked for command
+ * processing and the filter returns the reject message to the MTA immediately.
  * 
  * @author 	Jens Elkner
  * @version	$Revision$
@@ -392,8 +402,10 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 						break;
 					case ACCEPT:
 						acceptList.add(filter);
-						if (acceptList.containsAll(filters)) {
-							result = new AcceptPacket();
+						if (acceptList.containsAll(filters)
+							|| ((AcceptPacket) p).isFinal()) 
+						{
+							result = new AcceptPacket(false);
 							stop = true;
 						}
 						break;
