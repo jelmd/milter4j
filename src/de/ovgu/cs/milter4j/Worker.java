@@ -658,10 +658,8 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 				break;
 			case OPTNEG:
 				final NegotiationPacket rp = new NegotiationPacket(data);
-				for (MailFilter f : filters) {
-					stats.increment(f.getStatName(), packageType, 
+				stats.increment(GLOB_STAT_NAME, packageType, 
 						de.ovgu.cs.milter4j.reply.Type.CONTINUE);
-				}
 				negotiate(rp);
 				send(rp, cmd);
 				break;
