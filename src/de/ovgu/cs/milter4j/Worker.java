@@ -86,7 +86,8 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 	private long createTime;
 	private String name;
 	private StatsCollector stats;
-
+	private static final String GLOB_STAT_NAME = "NullFilter";
+	
 	// stuff to manage filters
 	ArrayList<MailFilter> filters;
 	HashSet<MailFilter> skipList;
@@ -223,9 +224,12 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 		}
 	}
 
-	private void send(Packet p) throws IOException {
+	private void send(Packet p, Type cmd) throws IOException {
 		if (channel != null && channel.isOpen()) {
 			log.debug("Sending packet {}", p);
+			if (p.getType() != de.ovgu.cs.milter4j.reply.Type.CONTINUE) {
+				stats.increment(GLOB_STAT_NAME, cmd, p.getType());
+			}
 			p.send(channel);
 		}
 	}
@@ -426,7 +430,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 					case QUARANTINE:	// EOM
 					case PROGRESS:		// EOM
 						if (cmd == Type.BODYEOB) {
-							send(p);
+							send(p, cmd);
 						} else {
 							toSend.add(p);
 						}
@@ -444,7 +448,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 			}
 		}
 		if (result != null) {
-			send(result);
+			send(result, cmd);
 		}
 		return stop;
 	}
@@ -485,7 +489,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 						}
 					}
 				}
-				send(new ContinuePacket());
+				send(new ContinuePacket(), cmd);
 				break;
 			case HELO:
 				connectionMacros.putAll(lastMacros);
@@ -498,7 +502,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 						}
 					}
 				}
-				send(new ContinuePacket());
+				send(new ContinuePacket(), cmd);
 				break;
 			case MAIL:
 				lastMacros.clear();
@@ -511,7 +515,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 						}
 					}
 				}
-				send(new ContinuePacket());
+				send(new ContinuePacket(), cmd);
 				break;
 			case RCPT:
 				lastMacros.clear();
@@ -529,7 +533,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 						}
 					}
 				}
-				send(new ContinuePacket());
+				send(new ContinuePacket(), cmd);
 				break;
 			case DATA:
 				lastMacros.clear();
@@ -542,7 +546,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 						}
 					}
 				}
-				send(new ContinuePacket());
+				send(new ContinuePacket(), cmd);
 				break;
 			case HEADER:
 				lastMacros.clear();
@@ -556,7 +560,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 						}
 					}
 				}
-				send(new ContinuePacket());
+				send(new ContinuePacket(), cmd);
 				break;
 			case EOH:
 				lastMacros.clear();
@@ -568,7 +572,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 						}
 					}
 				}
-				send(new ContinuePacket());
+				send(new ContinuePacket(), cmd);
 				break;
 			case BODY:
 				lastMacros.clear();
@@ -597,7 +601,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 						}
 					}
 				}
-				send(new ContinuePacket());
+				send(new ContinuePacket(), cmd);
 				break;
 			case BODYEOB:
 				lastMacros.clear();
@@ -611,7 +615,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 							}
 							quarantined = true;
 						}
-						send(p);
+						send(p, cmd);
 					}
 					toSend.clear();
 				}
@@ -637,7 +641,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 						}
 					}
 				}
-				send(new ContinuePacket());
+				send(new ContinuePacket(), cmd);
 				break;
 			case UNKNOWN:
 				lastMacros.clear();
@@ -650,7 +654,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 						}
 					}
 				}
-				send(new ContinuePacket());
+				send(new ContinuePacket(), cmd);
 				break;
 			case OPTNEG:
 				final NegotiationPacket rp = new NegotiationPacket(data);
@@ -659,7 +663,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 						de.ovgu.cs.milter4j.reply.Type.CONTINUE);
 				}
 				negotiate(rp);
-				send(rp);
+				send(rp, cmd);
 				break;
 			case QUIT:
 			case QUIT_NC:
@@ -678,7 +682,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 				break;
 			default:
 				lastMacros.clear();
-				send(new ContinuePacket());
+				send(new ContinuePacket(), cmd);
 				log.warn("Unknown comand " + packageType + " not handled");
 		}
 		return false;
