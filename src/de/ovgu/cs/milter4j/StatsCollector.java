@@ -323,8 +323,9 @@ public class StatsCollector {
 	 */
 	public void removeAll(MBeanServer server) {
 		if (server != null) {
-			for (String name : stats.keySet()) {
-				remove(name, server);
+			String[] names = stats.keySet().toArray(new String[0]);
+			for (int i=names.length-1; i >= 0; i--) {
+				remove(names[i], server);
 			}
 		} else {
 			stats.clear();
