@@ -120,7 +120,12 @@ public class Server extends Thread
 				}
 			}
 		}
-		Worker w = new Worker(filters, stats);
+		// since thread per worker, make sure, that each one has its own instance
+		ArrayList<MailFilter> newFilters  = new ArrayList<MailFilter>();
+		for (MailFilter mf : filters) {
+			newFilters.add(mf.getInstance());
+		}
+		Worker w = new Worker(newFilters, stats);
 		workers.add(w);
 		return w;
 	}
