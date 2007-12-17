@@ -175,7 +175,7 @@ public class RequestDumper
 	public Packet doMailFrom(String[] from) {
 		StringBuilder buf = new StringBuilder("doMailFrom:").append(eol);
 		for (String arg : from) {
-			buf.append("MAIL FROM: ").append(arg).append(eol);
+			buf.append(arg).append(eol);
 		}
 		log.info(buf.toString());
 		return new ContinuePacket();
@@ -188,7 +188,7 @@ public class RequestDumper
 	public Packet doRecipientTo(String[] recipient) {
 		StringBuilder buf = new StringBuilder("doRecipientTo:").append(eol);
 		for (String arg : recipient) {
-			buf.append("RCPT TO: ").append(arg).append(eol);
+			buf.append(arg).append(eol);
 		}
 		log.info(buf.toString());
 		return new ContinuePacket();
