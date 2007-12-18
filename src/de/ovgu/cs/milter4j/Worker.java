@@ -11,6 +11,7 @@ package de.ovgu.cs.milter4j;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousCloseException;
 import java.nio.channels.SocketChannel;
@@ -148,6 +149,11 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 			log.warn("Old socket not cleaned up");
 		}
 		this.channel = channel;
+		try {
+			channel.socket().setSoTimeout(10*60*1000); // make sure, we get it back
+		} catch (SocketException e) {
+			log.warn(e.getLocalizedMessage());
+		}
 	}
 
 	/**
@@ -366,8 +372,8 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 	 * @param filter	the filter, which produced the given packets
 	 * @param cmd		the command, that was used for filter invocation 
 	 * @param res	answer packets produced by a mail filter
-	 * @return <code>true</code> if the last packet has been sent and the 
-	 * 		connection can be closed.
+	 * @return <code>true</code> if the final decision has been made and no
+	 * 		further filter invocations should occure.
 	 * @throws IOException on I/O error
 	 */
 	private boolean handleResult(MailFilter filter, Type cmd, Packet... res) 
@@ -455,9 +461,11 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 
 	/**
 	 * Handle Packets
-	 * @param skey
-	 * @return <code>true</code> if last packet has been sent, i.e. connection 
-	 * 		can be closed.
+	 * @param cmd	the command name
+	 * @param data	the data (payload) of the command package received
+	 * @return {@code true} if last packet has been sent, i.e. connection 
+	 * 		can be closed (which usually happens for {@code QUIT*} commands, 
+	 * 		only).
 	 * @throws IOException 
 	 */
 	private boolean handlePaket(Type cmd, ByteBuffer data) throws IOException {
@@ -485,7 +493,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 						Packet p = f.doConnect(cp.getHostname(), 
 							cp.getAddressFaily(), cp.getPort(), cp.getInfo());
 						if (handleResult(f, packageType, p)) {
-							return true;
+							return false;
 						}
 					}
 				}
@@ -498,7 +506,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 					for (MailFilter f : todo) {
 						Packet p = f.doHelo(lp.getDomain());
 						if (handleResult(f, packageType, p)) {
-							return true;
+							return false;
 						}
 					}
 				}
@@ -511,7 +519,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 					for (MailFilter f : todo) {
 						Packet p = f.doMailFrom(fp.getFrom());
 						if (handleResult(f, packageType, p)) {
-							return true;
+							return false;
 						}
 					}
 				}
@@ -524,7 +532,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 					for (MailFilter f : todo) {
 						Packet p = f.doRecipientTo(tp.getRecipient());
 						if (handleResult(f, packageType, p)) {
-							return true;
+							return false;
 						}
 						if (p.getType() == de.ovgu.cs.milter4j.reply.Type.REJECT
 							|| p.getType() == de.ovgu.cs.milter4j.reply.Type.TEMPFAIL) 
@@ -542,7 +550,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 					for (MailFilter f : todo) {
 						Packet p = f.doData();
 						if (handleResult(f, packageType, p)) {
-							return true;
+							return false;
 						}
 					}
 				}
@@ -556,7 +564,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 					for (MailFilter f : todo) {
 						Packet p = f.doHeader(hp.getName(), hp.getValue());
 						if (handleResult(f, packageType, p)) {
-							return true;
+							return false;
 						}
 					}
 				}
@@ -568,7 +576,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 					for (MailFilter f : todo) {
 						Packet p = f.doEndOfHeader(headers, allMacros);
 						if (handleResult(f, packageType, p)) {
-							return true;
+							return false;
 						}
 					}
 				}
@@ -597,7 +605,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 					for (MailFilter f : todo) {
 						Packet p = f.doBody(bp.getChunk());
 						if (handleResult(f, packageType, p)) {
-							return true;
+							return false;
 						}
 					}
 				}
@@ -633,7 +641,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 							if (handleResult(f, packageType, 
 								p.toArray(new Packet[p.size()]))) 
 							{
-								return true;
+								return false;
 							}
 						} else {
 							stats.increment(f.getStatName(), packageType,
@@ -650,7 +658,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 					for (MailFilter f : todo) {
 						Packet p = f.doBadCommand(up.getCmd());
 						if (handleResult(f, packageType, p)) {
-							return true;
+							return false;
 						}
 					}
 				}
@@ -692,7 +700,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 	 * <p>
 	 * Ready for non-blocking I/O.
 	 *  
-	 * @return <code>true</code> a complete packet has been read.
+	 * @return {@code true} if a complete packet has been read.
 	 * @throws IOException on I/O error
 	 */
 	private boolean readPacket() throws IOException {
