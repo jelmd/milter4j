@@ -84,8 +84,8 @@ public class Server extends Thread
 	public Server(String configFile) {
 		cfg = new Configuration(configFile);
 		cfg.add(this);
-		executor = new FutureTaskExecutor(3, 256, 5L, TimeUnit.MINUTES,
-            new SynchronousQueue<Runnable>());
+		executor = new FutureTaskExecutor(3, cfg.getMaxWorkers(), 
+			5L, TimeUnit.MINUTES, new SynchronousQueue<Runnable>());
 		stats = new StatsCollector(cfg.getSampleRates(), cfg.getSamples());
 		MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
 		try {

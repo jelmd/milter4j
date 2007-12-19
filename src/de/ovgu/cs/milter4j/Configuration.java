@@ -33,7 +33,7 @@ import de.ovgu.cs.milter4j.util.Misc;
  * 
  * File format used:
  * <pre>
- * &lt;config port="4444" host="*" shutdown="4445"
+ * &lt;config port="4444" host="*" shutdown="4445" workers="256"
  * 	samples="255" samplerates="1m, 5m, 4h, 1d, 1w"
  * 	&gt;
  * 	&lt;filter class="org.bla.fahsel.milter.Cool" conf="/etc/cool.conf"/&gt;
@@ -58,6 +58,11 @@ import de.ovgu.cs.milter4j.util.Misc;
  * It will always bind to the {@code localhost} interface. If ommitted, it will
  * be set to {@value #DEFAULT_SHUTDOWN_PORT}.
  * </dd>
+ * <dt>workers</dt>
+ * <dd>
+ * The max. number of workers to be used in the thread pool for handling 
+ * mail requests.
+ * </dt>
  * <dt>samplerates</dt>
  * <dd>
  * A comma separated list of time intervalls, at which "number of connections 
@@ -112,6 +117,8 @@ public class Configuration {
 	static final int[] DEFAULT_SAMPLE_RATES = new int[] {
 		60, 5 * 60, 30 * 60, 4 * 60 * 60, 24 * 60 * 60
 	};
+	/** default number of max. threads for the executor service beeing used */
+	public static final int DEFAULT_WORKERS = 256;
 	
 	private File conf;
 	private InetSocketAddress address;
@@ -120,7 +127,8 @@ public class Configuration {
 	private int shutdownPort;
 	private int[] sampleRate;
 	private int samples;
-	
+	private int maxWorkers;
+
 	/**
 	 * Create a new Configuration using the given config file.
 	 * 
@@ -232,13 +240,21 @@ public class Configuration {
 				samples = DEFAULT_SAMPLES;
 			}
 			setSampleRates(reader.getAttributeValue(null, "samplerates"));
+			String tmp = reader.getAttributeValue(null, "workers");
+			int workers = -1;
+			try {
+				workers = Integer.parseInt(tmp,10);
+			} catch (Exception e) {
+				// ignore
+			}
+			maxWorkers = workers > 0 ? workers : DEFAULT_WORKERS;
 			while (reader.hasNext()) {
 				int res = reader.next();
 				if (res == XMLStreamConstants.END_ELEMENT) {
 					break;
 				}
 				if (res == XMLStreamConstants.START_ELEMENT) {
-					String tmp = reader.getLocalName();
+					tmp = reader.getLocalName();
 					if (tmp.equals("filter")) {
 						addFilter(reader, newfilters);
 					} else {
@@ -404,5 +420,14 @@ public class Configuration {
 	 */
 	public int[] getSampleRates() {
 		return Arrays.copyOf(sampleRate, sampleRate.length);
+	}
+	
+	/**
+	 * Get the max. number of workers in the thread pool to be used.
+	 * @return always a value &gt; 0
+	 * @see #DEFAULT_WORKERS
+	 */
+	public int getMaxWorkers() {
+		return maxWorkers;
 	}
 }
