@@ -780,8 +780,8 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 				if (channel != null) {
 					log.warn(e.getClass().getSimpleName() 
 						+ " " + e.getLocalizedMessage());
-					if (log.isDebugEnabled()) {
-						log.debug("method()", e);
+					if (log.isInfoEnabled()) {
+						log.info("method()", e);
 					}
 				}
 				last = true;
