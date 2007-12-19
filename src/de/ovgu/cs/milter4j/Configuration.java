@@ -94,7 +94,7 @@ public class Configuration {
 		.getLogger(Configuration.class);
 
 	/** the default mail filter server configuration file */ 
-	public static final String DEFAULT_CONFIG = "/etc/milter.conf";
+	public static final String DEFAULT_CONFIG = "/etc/mail/milter.conf";
 	/** the default port, the mail filter server should listen for connections */
 	public static final int DEFAULT_PORT = 4444;
 
