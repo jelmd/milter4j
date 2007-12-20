@@ -340,13 +340,21 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 			allMacros.putAll(connectionMacros);
 			if (filters.size() > 0) {
 				for (MailFilter f : filters) {
-					f.doAbort();
+					try {
+						f.doAbort();
+					} catch (Exception e) {
+						log.warn(f.getName() + ": " + e.getLocalizedMessage());
+					}
 				}
 			}
 		} else {
 			if (filters.size() > 0) {
 				for (MailFilter f : filters) {
-					f.doQuit();
+					try {
+						f.doQuit();
+					} catch (Exception e) {
+						log.warn(f.getName() + ": " + e.getLocalizedMessage());
+					}
 				}
 			}
 			connectionMacros.clear();
@@ -479,7 +487,11 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 					for (MailFilter f : todo) {
 						stats.increment(f.getStatName(), cmd, 
 							de.ovgu.cs.milter4j.reply.Type.CONTINUE);
-						f.doMacros(allMacros, mp.getMacros());
+						try {
+							f.doMacros(allMacros, mp.getMacros());
+						} catch (Exception e) {
+							log.warn(f.getName() + ": " + e.getLocalizedMessage());
+						}
 					}
 				}
 				// no reply at all
@@ -490,10 +502,14 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 				if (todo.size() > 0) {
 					final ConnectPacket cp = new ConnectPacket(data);
 					for (MailFilter f : todo) {
-						Packet p = f.doConnect(cp.getHostname(), 
-							cp.getAddressFaily(), cp.getPort(), cp.getInfo());
-						if (handleResult(f, packageType, p)) {
-							return false;
+						try {
+							Packet p = f.doConnect(cp.getHostname(), 
+								cp.getAddressFaily(), cp.getPort(), cp.getInfo());
+							if (handleResult(f, packageType, p)) {
+								return false;
+							}
+						} catch (Exception e) {
+							log.warn(f.getName() + ": " + e.getLocalizedMessage());
 						}
 					}
 				}
@@ -504,9 +520,13 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 				if (todo.size() > 0) {
 					final HeloPacket lp = new HeloPacket(data);
 					for (MailFilter f : todo) {
-						Packet p = f.doHelo(lp.getDomain());
-						if (handleResult(f, packageType, p)) {
-							return false;
+						try {
+							Packet p = f.doHelo(lp.getDomain());
+							if (handleResult(f, packageType, p)) {
+								return false;
+							}
+						} catch (Exception e) {
+							log.warn(f.getName() + ": " + e.getLocalizedMessage());
 						}
 					}
 				}
@@ -517,9 +537,13 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 				final MailFromPacket fp = new MailFromPacket(data);
 				if (todo.size() > 0) {
 					for (MailFilter f : todo) {
-						Packet p = f.doMailFrom(fp.getFrom());
-						if (handleResult(f, packageType, p)) {
-							return false;
+						try {
+							Packet p = f.doMailFrom(fp.getFrom());
+							if (handleResult(f, packageType, p)) {
+								return false;
+							}
+						} catch (Exception e) {
+							log.warn(f.getName() + ": " + e.getLocalizedMessage());
 						}
 					}
 				}
@@ -530,14 +554,18 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 				final RecipientToPacket tp = new RecipientToPacket(data);
 				if (todo.size() > 0) {
 					for (MailFilter f : todo) {
-						Packet p = f.doRecipientTo(tp.getRecipient());
-						if (handleResult(f, packageType, p)) {
-							return false;
-						}
-						if (p.getType() == de.ovgu.cs.milter4j.reply.Type.REJECT
-							|| p.getType() == de.ovgu.cs.milter4j.reply.Type.TEMPFAIL) 
-						{
-							return false;
+						try {
+							Packet p = f.doRecipientTo(tp.getRecipient());
+							if (handleResult(f, packageType, p)) {
+								return false;
+							}
+							if (p.getType() == de.ovgu.cs.milter4j.reply.Type.REJECT
+								|| p.getType() == de.ovgu.cs.milter4j.reply.Type.TEMPFAIL) 
+							{
+								return false;
+							}
+						} catch (Exception e) {
+							log.warn(f.getName() + ": " + e.getLocalizedMessage());
 						}
 					}
 				}
@@ -548,9 +576,13 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 				/* right now the milter will send macros only, but no data */
 				if (todo.size() > 0) {
 					for (MailFilter f : todo) {
-						Packet p = f.doData();
-						if (handleResult(f, packageType, p)) {
-							return false;
+						try {
+							Packet p = f.doData();
+							if (handleResult(f, packageType, p)) {
+								return false;
+							}
+						} catch (Exception e) {
+							log.warn(f.getName() + ": " + e.getLocalizedMessage());
 						}
 					}
 				}
@@ -562,9 +594,13 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 				headers.add(new Header(hp.getName(), hp.getValue()));
 				if (todo.size() > 0) {
 					for (MailFilter f : todo) {
-						Packet p = f.doHeader(hp.getName(), hp.getValue());
-						if (handleResult(f, packageType, p)) {
-							return false;
+						try {
+							Packet p = f.doHeader(hp.getName(), hp.getValue());
+							if (handleResult(f, packageType, p)) {
+								return false;
+							}
+						} catch (Exception e) {
+							log.warn(f.getName() + ": " + e.getLocalizedMessage());
 						}
 					}
 				}
@@ -574,9 +610,13 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 				lastMacros.clear();
 				if (todo.size() > 0) {
 					for (MailFilter f : todo) {
-						Packet p = f.doEndOfHeader(headers, allMacros);
-						if (handleResult(f, packageType, p)) {
-							return false;
+						try {
+							Packet p = f.doEndOfHeader(headers, allMacros);
+							if (handleResult(f, packageType, p)) {
+								return false;
+							}
+						} catch (Exception e) {
+							log.warn(f.getName() + ": " + e.getLocalizedMessage());
 						}
 					}
 				}
@@ -603,9 +643,13 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 						}
 					}
 					for (MailFilter f : todo) {
-						Packet p = f.doBody(bp.getChunk());
-						if (handleResult(f, packageType, p)) {
-							return false;
+						try {
+							Packet p = f.doBody(bp.getChunk());
+							if (handleResult(f, packageType, p)) {
+								return false;
+							}
+						} catch (Exception e) {
+							log.warn(f.getName() + ": " + e.getLocalizedMessage());
 						}
 					}
 				}
@@ -636,16 +680,20 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 						body = null;
 					}
 					for (MailFilter f : todo) {
-						List<Packet> p = f.doEndOfMail(headers, allMacros, msg);
-						if (p != null) {
-							if (handleResult(f, packageType, 
-								p.toArray(new Packet[p.size()]))) 
-							{
-								return false;
+						try {
+							List<Packet> p = f.doEndOfMail(headers, allMacros, msg);
+							if (p != null) {
+								if (handleResult(f, packageType, 
+									p.toArray(new Packet[p.size()]))) 
+								{
+									return false;
+								}
+							} else {
+								stats.increment(f.getStatName(), packageType,
+									de.ovgu.cs.milter4j.reply.Type.CONTINUE);
 							}
-						} else {
-							stats.increment(f.getStatName(), packageType,
-								de.ovgu.cs.milter4j.reply.Type.CONTINUE);
+						} catch (Exception e) {
+							log.warn(f.getName() + ": " + e.getLocalizedMessage());
 						}
 					}
 				}
@@ -656,9 +704,13 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 				if (todo.size() > 0) {
 					final UnknownCmdPacket up = new UnknownCmdPacket(data);
 					for (MailFilter f : todo) {
-						Packet p = f.doBadCommand(up.getCmd());
-						if (handleResult(f, packageType, p)) {
-							return false;
+						try {
+							Packet p = f.doBadCommand(up.getCmd());
+							if (handleResult(f, packageType, p)) {
+								return false;
+							}
+						} catch (Exception e) {
+							log.warn(f.getName() + ": " + e.getLocalizedMessage());
 						}
 					}
 				}
