@@ -131,8 +131,8 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 		skipList = new HashSet<MailFilter>(filters.size());
 		name = "Mail-Worker-" + instCounter.getAndIncrement();
 		Version v = new Version();
-		version = v.getProductName() + " " + v.getProductVersion() + " (" 
-			+ v.getBuildNumber() + ")";
+		version = v.getProjectName() + " - " + v.getProductName() + " " 
+			+ v.getProductVersion() + " (" + v.getBuildNumber() + ")";
 		reconfigure(filters);
 	}
 	

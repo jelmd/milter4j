@@ -19,6 +19,7 @@ package de.ovgu.cs.milter4j;
 public class Version {
 
 	/** stuff will be replaced by ant */
+	private static final String projectName = "@ant.project.name@";
 	private static final String productName = "@product.name@";
 	private static final String productVersion = "@product.version@";
 	private static final String yearStart = "@year.start@";
@@ -27,6 +28,13 @@ public class Version {
 	private static final String vendorURL = "@vendor.url@";
 	private static final String buildNumber = "b@build.number@";
 	
+	/**
+	 * Get the project name of this product
+	 * @return this product's project name
+	 */
+	public String getProjectName() {
+		return projectName;
+	}
 	/**
 	 * Get the offical name of this product
 	 * @return this product's name
