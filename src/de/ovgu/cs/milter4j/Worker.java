@@ -41,6 +41,7 @@ import de.ovgu.cs.milter4j.cmd.RecipientToPacket;
 import de.ovgu.cs.milter4j.cmd.Type;
 import de.ovgu.cs.milter4j.cmd.UnknownCmdPacket;
 import de.ovgu.cs.milter4j.reply.AcceptPacket;
+import de.ovgu.cs.milter4j.reply.AddHeaderPacket;
 import de.ovgu.cs.milter4j.reply.ContinuePacket;
 import de.ovgu.cs.milter4j.reply.NegotiationPacket;
 import de.ovgu.cs.milter4j.reply.Packet;
@@ -115,6 +116,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 	ArrayList<Packet> toSend = new ArrayList<Packet>();
 	HashMap<MacroStage,HashSet<String>> macros2negotiate;
 	private ReentrantLock configLock;
+	private String version;
 	
 	/**
 	 * Creates a new worker, which manages the given filters.
@@ -128,6 +130,9 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 		acceptList = new HashSet<MailFilter>(filters.size());
 		skipList = new HashSet<MailFilter>(filters.size());
 		name = "Mail-Worker-" + instCounter.getAndIncrement();
+		Version v = new Version();
+		version = v.getProductName() + " " + v.getProductVersion() + " (" 
+			+ v.getBuildNumber() + ")";
 		reconfigure(filters);
 	}
 	
@@ -658,6 +663,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 			case BODYEOB:
 				lastMacros.clear();
 				boolean quarantined = false;
+				send(new AddHeaderPacket("X-Milter", version), cmd);
 				if (toSend != null && !toSend.isEmpty()) {
 					for (Packet p : toSend) {
 						if (p.getType() == de.ovgu.cs.milter4j.reply.Type.QUARANTINE)

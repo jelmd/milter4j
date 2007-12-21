@@ -49,7 +49,6 @@ public class NullFilter extends MailFilter {
 	@Override
 	public EnumSet<Type> getCommands() {
 		EnumSet<Type> cmds = EnumSet.allOf(Type.class);
-		cmds.remove(Type.DATA);
 		cmds.remove(Type.MACRO);
 		return cmds;
 	}
