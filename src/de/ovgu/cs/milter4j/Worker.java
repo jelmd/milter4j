@@ -171,7 +171,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 			this.filters = filters;
 			this.filters.trimToSize();
 			cmds2handle = EnumSet.noneOf(Type.class);
-			mods2handle = EnumSet.noneOf(Modification.class);
+			mods2handle = EnumSet.of(Modification.ADDHDRS);
 			mtaShouldSentRejected = false;
 			assembleMessage4 = new HashSet<MailFilter>();
 			macros2negotiate = new HashMap<MacroStage, HashSet<String>>(7);
