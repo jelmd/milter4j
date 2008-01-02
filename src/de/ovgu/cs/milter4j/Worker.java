@@ -564,8 +564,8 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 							if (handleResult(f, packageType, p)) {
 								return false;
 							}
-							if (p.getType() == de.ovgu.cs.milter4j.reply.Type.REJECT
-								|| p.getType() == de.ovgu.cs.milter4j.reply.Type.TEMPFAIL) 
+							if (p != null && (p.getType() == de.ovgu.cs.milter4j.reply.Type.REJECT
+								|| p.getType() == de.ovgu.cs.milter4j.reply.Type.TEMPFAIL)) 
 							{
 								return false;
 							}
