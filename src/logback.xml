@@ -23,7 +23,7 @@
 
 <root>
 	<level value="INFO" />
-	<appender-ref ref="stderr" />
+	<appender-ref ref="FILE" />
 </root>
 
 <logger name="de.ovgu.cs.milter4j"><level value="INFO"/></logger>
