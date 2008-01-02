@@ -134,4 +134,23 @@ public class ReplyPacket
 		bos.write(0);
 		return bos.toByteArray();
 	}
+	
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public String toString() {
+		StringBuilder buf = new StringBuilder(super.toString())
+			.append(" '").append(reply).append(" ").append(xcode).append(" ");
+		if (messages == null) {
+			buf.append("rejecting command");
+		} else {
+			buf.append(messages[0]);
+			if (messages.length > 1) {
+				buf.append(" ... ");
+			}
+		}
+		buf.append("'");
+		return buf.toString();
+	}
 }
