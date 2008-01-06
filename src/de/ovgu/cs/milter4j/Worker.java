@@ -196,6 +196,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 			channel.socket().setSoTimeout(10*60*1000); // make sure, we get it back
 		} catch (SocketException e) {
 			log.warn(e.getLocalizedMessage());
+			log.debug("prepare()", e);
 		}
 	}
 
@@ -387,6 +388,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 						f.doAbort();
 					} catch (Exception e) {
 						log.warn(f.getName() + ": " + e.getLocalizedMessage());
+						log.debug("cleanup()", e);
 					}
 				}
 			}
@@ -397,6 +399,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 						f.doQuit();
 					} catch (Exception e) {
 						log.warn(f.getName() + ": " + e.getLocalizedMessage());
+						log.debug("cleanup()", e);
 					}
 				}
 			}
@@ -534,6 +537,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 							f.doMacros(allMacros, mp.getMacros());
 						} catch (Exception e) {
 							log.warn(f.getName() + ": " + e.getLocalizedMessage());
+							log.debug("handlePaket", e);
 						}
 					}
 				}
@@ -554,6 +558,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 							}
 						} catch (Exception e) {
 							log.warn(f.getName() + ": " + e.getLocalizedMessage());
+							log.debug("handlePaket", e);
 						}
 					}
 				}
@@ -571,6 +576,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 							}
 						} catch (Exception e) {
 							log.warn(f.getName() + ": " + e.getLocalizedMessage());
+							log.debug("handlePaket", e);
 						}
 					}
 				}
@@ -588,6 +594,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 							}
 						} catch (Exception e) {
 							log.warn(f.getName() + ": " + e.getLocalizedMessage());
+							log.debug("handlePaket", e);
 						}
 					}
 				}
@@ -612,6 +619,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 							}
 						} catch (Exception e) {
 							log.warn(f.getName() + ": " + e.getLocalizedMessage());
+							log.debug("handlePaket", e);
 						}
 					}
 				}
@@ -629,6 +637,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 							}
 						} catch (Exception e) {
 							log.warn(f.getName() + ": " + e.getLocalizedMessage());
+							log.debug("handlePaket", e);
 						}
 					}
 				}
@@ -648,6 +657,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 							}
 						} catch (Exception e) {
 							log.warn(f.getName() + ": " + e.getLocalizedMessage());
+							log.debug("handlePaket", e);
 						}
 					}
 				}
@@ -664,6 +674,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 							}
 						} catch (Exception e) {
 							log.warn(f.getName() + ": " + e.getLocalizedMessage());
+							log.debug("handlePaket", e);
 						}
 					}
 				}
@@ -684,9 +695,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 							body.write(bp.getChunk());
 						} catch (IOException e) {
 							log.warn(e.getLocalizedMessage());
-							if (log.isDebugEnabled()) {
-								log.debug("method()", e);
-							}
+							log.debug("handlePaket", e);
 						}
 					}
 					for (MailFilter f : todo) {
@@ -697,6 +706,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 							}
 						} catch (Exception e) {
 							log.warn(f.getName() + ": " + e.getLocalizedMessage());
+							log.debug("handlePaket", e);
 						}
 					}
 				}
@@ -748,6 +758,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 							}
 						} catch (Exception e) {
 							log.warn(f.getName() + ": " + e.getLocalizedMessage());
+							log.debug("handlePaket", e);
 						}
 					}
 				}
@@ -765,6 +776,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 							}
 						} catch (Exception e) {
 							log.warn(f.getName() + ": " + e.getLocalizedMessage());
+							log.debug("handlePaket", e);
 						}
 					}
 				}
@@ -837,9 +849,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 		if (data.hasRemaining()) {
 			return false;
 		}
-		if (log.isDebugEnabled()) {
-			log.debug("{}: {} bytes of data received", packageType, data.limit());
-		}
+		log.debug("{}: {} bytes of data received", packageType, data.limit());
 		data.flip();
 		header.clear();
 		return true;
@@ -886,9 +896,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 				if (channel != null) {
 					log.warn(e.getClass().getSimpleName() 
 						+ " " + e.getLocalizedMessage());
-					if (log.isInfoEnabled()) {
-						log.info("method()", e);
-					}
+					log.info("call()", e);
 				}
 				last = true;
 			}
