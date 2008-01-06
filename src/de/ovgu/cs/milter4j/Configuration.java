@@ -34,6 +34,7 @@ import de.ovgu.cs.milter4j.util.Misc;
  * File format used:
  * <pre>
  * &lt;config port="4444" host="*" shutdown="4445" workers="256"
+ * 	version="false" addrcpt="false"
  * 	samples="255" samplerates="1m, 5m, 4h, 1d, 1w"
  * 	&gt;
  * 	&lt;filter class="org.bla.fahsel.milter.Cool" conf="/etc/cool.conf"/&gt;
@@ -62,7 +63,23 @@ import de.ovgu.cs.milter4j.util.Misc;
  * <dd>
  * The max. number of workers to be used in the thread pool for handling 
  * mail requests.
- * </dt>
+ * </dd>
+ * <dt>version</dt>
+ * <dd>
+ * If enabled and the milter receives the "End Of Body" cmd, the milter adds a 
+ * "X-Milter" header to the mail with the value of the current version of the 
+ * milter4j framework. Default is {@code true}.
+ * <dd>
+ * <dt>addrcpt</dt>
+ * <dd>
+ * If enabled and the milter receives the "End Of Body" cmd, the milter adds a 
+ * "X-RcptTo" header to the mail with the value of the <code>{rcpt_addr}</code>
+ * macro, which actually contains the arguments given to the "RCPT TO:" SMTP
+ * comand issued by the client. This may help to track/troubleshoot message, 
+ * since usually the MTA does not add this information to the headers of the 
+ * mail and the headers (since supplied by the client) may not contain the 
+ * address of the actual recipient. Default is {@code true}.
+ * </dd>
  * <dt>samplerates</dt>
  * <dd>
  * A comma separated list of time intervalls, at which "number of connections 
@@ -112,6 +129,10 @@ public class Configuration {
 	public static final String SOCKET_CHANGED = "socket";
 	/** property name used to notify config listeners about shutdown port changes */ 
 	public static final String SHUTDOWN_CHANGED = "shutdown";
+	/** property name used to notify config listeners about X-Milter version change */
+	public static final String VERSION_CHANGED = "disableVersion";
+	/** property name used to notify config listeners about X-RcptTo change */
+	public static final String RCPTTO_CHANGED = "rcptto";
 	/** default sample rate/hiistory size for connection statistics */
 	public static final int DEFAULT_SAMPLES = 255;
 	static final int[] DEFAULT_SAMPLE_RATES = new int[] {
@@ -128,6 +149,8 @@ public class Configuration {
 	private int[] sampleRate;
 	private int samples;
 	private int maxWorkers;
+	private boolean disableVersion;
+	private boolean disableRcptTo;
 
 	/**
 	 * Create a new Configuration using the given config file.
@@ -222,6 +245,8 @@ public class Configuration {
 		ArrayList<String> newfilters = new ArrayList<String>();
 		InetSocketAddress addr = null;
 		int port = DEFAULT_SHUTDOWN_PORT;
+		boolean newDisableVersion = false;
+		boolean newDisableRcptTo = false;
 		try {
 			addr = getAddress(reader);
 			String aPort = reader.getAttributeValue(null, "shutdown");
@@ -248,6 +273,10 @@ public class Configuration {
 				// ignore
 			}
 			maxWorkers = workers > 0 ? workers : DEFAULT_WORKERS;
+			tmp = reader.getAttributeValue(null, "version");
+			newDisableVersion = tmp != null && tmp.equalsIgnoreCase("false");
+			tmp = reader.getAttributeValue(null, "addrcpt");
+			newDisableRcptTo = tmp != null && tmp.equalsIgnoreCase("false");
 			while (reader.hasNext()) {
 				int res = reader.next();
 				if (res == XMLStreamConstants.END_ELEMENT) {
@@ -297,6 +326,20 @@ public class Configuration {
 		}
 		if (newfilters.size() == 0) {
 			log.warn("no filters found");
+		}
+		if (disableVersion ^ newDisableVersion) {
+			boolean old = disableVersion;
+			disableVersion = newDisableVersion;
+			if (pcs != null) {
+				pcs.firePropertyChange(VERSION_CHANGED, old, newDisableVersion);
+			}
+		}
+		if (disableRcptTo ^ newDisableRcptTo) {
+			boolean old = disableRcptTo;
+			disableRcptTo = newDisableRcptTo;
+			if (pcs != null) {
+				pcs.firePropertyChange(RCPTTO_CHANGED, old, newDisableRcptTo);
+			}
 		}
 		if (newfilters.size() != filter.size()) {
 			newfilters.trimToSize();
@@ -429,5 +472,26 @@ public class Configuration {
 	 */
 	public int getMaxWorkers() {
 		return maxWorkers;
+	}
+	
+	/**
+	 * Check, whether milter4j should automatically add a "X-Milter" header with
+	 * its value set to the version of the framework when receiving the
+	 * end-of-body command by the MTA. 
+	 * @return {@code true}, if a "X-Milter" header should be added.
+	 */
+	public boolean addVersion() {
+		return !disableVersion;
+	}
+	
+	/**
+	 * Check, whether milter4j should automatically add a "X-RcptTo" header with
+	 * its value set to the arguments supplied by the SMTP client to the MTA
+	 * via the {@code RCPT TO} comand when receiving the
+	 * end-of-body command by the MTA. 
+	 * @return {@code true}, if a "X-RcptTo" header should be added.
+	 */
+	public boolean addRecipient() {
+		return !disableRcptTo;
 	}
 }

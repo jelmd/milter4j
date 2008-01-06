@@ -35,13 +35,13 @@ import de.ovgu.cs.milter4j.reply.Packet;
  * Since the mail message in question is read from an file, the following
  * methods will never be invoked on the target dueto missing information:
  * <ul> 
- * 	<li>{@link MailFilter#doConnect(String, de.ovgu.cs.milter4j.AddressFamily, int, String)}</li>
- * 	<li>{@link MailFilter#doHelo(String)}</li>
- *	<li>{@link MailFilter#doRecipientTo(String[])}</li>
+ * 	<li>{@link MailFilter#doConnect(String, de.ovgu.cs.milter4j.AddressFamily, int, String, HashMap)}</li>
+ * 	<li>{@link MailFilter#doHelo(String, HashMap)}</li>
+ *	<li>{@link MailFilter#doRecipientTo(String[], HashMap)}</li>
  *	<li>{@link MailFilter#doMacros(java.util.HashMap, java.util.HashMap)}</li>
  *	<li>{@link MailFilter#doAbort()}</li>
  * </ul>
- * Also the arguments supplied in the {@link MailFilter#doMailFrom(String[])}
+ * Also the arguments supplied in the {@link MailFilter#doMailFrom(String[], HashMap)}
  * usually do not contain any ESMTP args, since they are not stored in an
  * mbox file.
  * 
@@ -140,21 +140,21 @@ public class Simulator {
 		if (buf.indexOf("From ") == -1) {
 			throw new StreamCorruptedException("Not an mbox stream");
 		}
+		HashMap<String,String> macros = new HashMap<String,String>(0);
 		if (cmds.contains(Type.MAIL)) {
 			Packet p = filter.doMailFrom(new String[] { 
 				buf.substring(5, buf.indexOf(" ", 6)) 
-			});
+			}, macros);
 			log.info("RESULT: {}", String.valueOf(p));
 		}
 		Mail msg = new Mail(ir);
 		Enumeration<?> headers = msg.getAllHeaders();
 		ArrayList<Header> localHeaders = new ArrayList<Header>();
-		HashMap<String,String> macros = new HashMap<String,String>(0);
 		if (cmds.contains(Type.HEADER)) {
 			while (headers.hasMoreElements()) {
 				Header h = (Header) headers.nextElement();
 				localHeaders.add(h);
-				Packet p = filter.doHeader(h.getName(), h.getValue());
+				Packet p = filter.doHeader(h.getName(), h.getValue(), macros);
 				log.info("RESULT: {}", String.valueOf(p));
 			}
 		}
@@ -163,7 +163,7 @@ public class Simulator {
 			log.info("RESULT: {}", String.valueOf(p));
 		}
 		if (cmds.contains(Type.DATA)) {
-			Packet p = filter.doData();
+			Packet p = filter.doData(macros);
 			log.info("RESULT: {}", String.valueOf(p));
 		}
 		if (cmds.contains(Type.BODY)) {
@@ -174,12 +174,12 @@ public class Simulator {
 			for (;count > 0;count--) {
 				System.arraycopy(data, offset, chunk, 0, chunkSize);
 				offset += chunkSize;
-				Packet p = filter.doBody(chunk);
+				Packet p = filter.doBody(chunk, macros);
 				log.info("RESULT: {}", String.valueOf(p));
 			}
 			chunk = new byte[data.length-offset];
 			System.arraycopy(data, offset, chunk, 0, chunk.length);
-			Packet p = filter.doBody(chunk);
+			Packet p = filter.doBody(chunk, macros);
 			log.info("RESULT: {}", String.valueOf(p));
 		}
 		if (cmds.contains(Type.BODYEOB)) {

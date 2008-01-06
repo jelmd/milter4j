@@ -21,6 +21,7 @@ import de.ovgu.cs.milter4j.cmd.Type;
 import de.ovgu.cs.milter4j.reply.ContinuePacket;
 import de.ovgu.cs.milter4j.reply.Packet;
 import de.ovgu.cs.milter4j.util.Mail;
+import de.ovgu.cs.milter4j.util.RequestDumper;
 
 /**
  * An abstract mail filter, which actually handles the MTA requests.
@@ -35,13 +36,45 @@ import de.ovgu.cs.milter4j.util.Mail;
  * {@link #getInstance()} method.
  * <p>
  * Per contract, no method is allowed to modify data in passed references. Doing
- * it possibly makes other filters misbehaving.
+ * it possibly makes other filters misbehaving. The only one exception is the
+ * {@code allMacros} map, passed to all <em>do*</em> methods - see below.
  * <p>
  * All <em>do*</em> methods are directly related to commands send by the MTA and
- * will be called right after receiption of the command with the obtain 
- * information. However, all filters are processed in sequence (back-to-back)
- * according to their order in the milter configuration file 
- * (see {@link Configuration}). 
+ * are called right after receiption of the command with the obtained
+ * information. All filters are processed in sequence (back-to-back) according 
+ * to their order in the milter configuration file (see {@link Configuration}) 
+ * by a Worker, which owns the connection to the MTA and all filter instances.
+ * The handling of a connection might be expressed very simplified as follows:
+ * <pre>
+ *	Worker worker = getFreeWorker();
+ *	worker.handle(connection) {
+ * 		List<MailFilter> filters = getFilters();
+ *		while (command != QUIT) {
+ *			command = con.getCommand();
+ *			preprocess(command);
+ *			for (MailFilter filter : filters) {
+ *				if (filterWants(command, filter)) {
+ *					results = filter.do$command(...);
+ *					if (!process(results)) {
+ *						break;
+ *					}
+ *				}
+ *			}
+ *		}
+ *	}
+ * </pre>
+ * NOTE: This handling is different than explained in the API ControlFlow 
+ * overview of the C Milter library!
+ * <p>
+ * For convinience each <em>do*</em> method gets passed the map with all macros
+ * and values received from the MTA, even if the MailFilter did not subscribe
+ * to the {@link Type#MACRO} notification. However, since the value of certain
+ * macros may change depending on the processing state of it might be still
+ * necessary to subscribe to the {@link Type#MACRO} notification (use the 
+ * {@link RequestDumper} to find out). NOTE: You may also add your own key,value
+ * pairs to the map to "communicate" with other MailFilters managed by the sae
+ * milter4j server, but always make sure, that you never overwrite the macros, 
+ * sent by the MTA!
  * <p>
  * NOTE: According to Milter API one may send messages, which modify the current 
  * mail only when the end of the mail has been reached 
@@ -49,7 +82,7 @@ import de.ovgu.cs.milter4j.util.Mail;
  * however, this implementation allows filter to return those packets immediately.
  * The managing server will queue these packets and send them as soon as it gets
  * the end of mail notification from the MTA (before the {@link 
- * #doEndOfMail(List, HashMap, Mail)} of all managed filters gets called.
+ * #doEndOfMail(List, HashMap, Mail)} of all managed filters still active gets called.
  * <p>
  * If a <code>do*</code> method returns <code>null</code>, the result will be 
  * interpreted as {@link ContinuePacket}.
@@ -64,10 +97,10 @@ import de.ovgu.cs.milter4j.util.Mail;
  * 		<li>{@link de.ovgu.cs.milter4j.reply.Type#CONN_FAIL} if supported by 
  * 			the MTA (most do not)</li>
  * 		<li>{@link de.ovgu.cs.milter4j.reply.Type#SKIP} if returned by 
- * 			{@link #doBody(byte[])}, supported by the MTA and no other managed
- * 			filter needs further body chunks. Anyway, the managing server makes
- * 			sure, that the filter, which sent that packet, will not receive
- * 			any further body chunks.</li>
+ * 			{@link #doBody(byte[], HashMap)}, supported by the MTA and no other 
+ * 			managed filter needs further body chunks. Anyway, the managing 
+ * 			server makes sure, that the filter, which sent that packet, will 
+ * 			not receive any further body chunks.</li>
  * </ul>
  * The following commands are reserved for use by the managing server and thus
  * are ignored.
@@ -266,10 +299,12 @@ public abstract class MailFilter {
 	 * Only called, if {@link #getCommands()} contains {@link Type#DATA}.
 	 * <p>
 	 * Type: message-oriented
+	 * @param allMacros	all macros already sent by the MTA for the current 
+	 * 		connection and message. 
 	 * 
 	 * @return the answer to send back to the MTA.
 	 */
-	public Packet doData() {
+	public Packet doData(HashMap<String,String> allMacros) {
 		return new ContinuePacket();
 	}
 
@@ -285,9 +320,13 @@ public abstract class MailFilter {
 	 * 
 	 * @param name	the header name
 	 * @param value	the value of the header field (might be an empty String)
+	 * @param allMacros	all macros already sent by the MTA for the current 
+	 * 		connection and message. 
 	 * @return the answer to send back to the MTA.
 	 */
-	public Packet doHeader(String name, String value) {
+	public Packet doHeader(String name, String value, 
+		HashMap<String,String> allMacros) 
+	{
 		return new ContinuePacket();
 	}
 	
@@ -304,11 +343,13 @@ public abstract class MailFilter {
 	 * 		not available)
 	 * @param info 	IP address of the remote mail-client or UNIX-Path,
 	 * 		<code>null</code> if not available. 
+	 * @param allMacros	all macros already sent by the MTA for the current 
+	 * 		connection and message. 
 	 * 
 	 * @return the answer to this packet. Per default a new {@link ContinuePacket}
 	 */
 	public Packet doConnect(String hostname, AddressFamily family, int port, 
-		String info) 
+		String info, HashMap<String,String> allMacros) 
 	{
 		return new ContinuePacket();
 	}
@@ -322,9 +363,11 @@ public abstract class MailFilter {
 	 * 
 	 * @param domain	the domain or whatever the mail-client submitted via 
 	 * 		HELO/EHLO
+	 * @param allMacros	all macros already sent by the MTA for the current 
+	 * 		connection and message. 
 	 * @return the answer to this packet. Per default a new {@link ContinuePacket}
 	 */
-	public Packet doHelo(String domain) {
+	public Packet doHelo(String domain, HashMap<String,String> allMacros) {
 		return new ContinuePacket();
 	}
 
@@ -336,9 +379,11 @@ public abstract class MailFilter {
 	 * Type: message-oriented
 	 * 
 	 * @param from		'MAIL FROM:' values sent by the mail-client
+	 * @param allMacros	all macros already sent by the MTA for the current 
+	 * 		connection and message. 
 	 * @return the answer to this packet. Per default a new {@link ContinuePacket}
 	 */
-	public Packet doMailFrom(String[] from) {
+	public Packet doMailFrom(String[] from, HashMap<String,String> allMacros) {
 		return new ContinuePacket();
 	}
 
@@ -350,9 +395,13 @@ public abstract class MailFilter {
 	 * Type: recipient-oriented
 	 * 
 	 * @param recipient		'RCPT TO:' values sent by the mail-client
+	 * @param allMacros	all macros already sent by the MTA for the current 
+	 * 		connection and message. 
 	 * @return the answer to this packet. Per default a new {@link ContinuePacket}
 	 */
-	public Packet doRecipientTo(String[] recipient) {
+	public Packet doRecipientTo(String[] recipient, 
+		HashMap<String,String> allMacros) 
+	{
 		return new ContinuePacket();
 	}
 
@@ -375,9 +424,11 @@ public abstract class MailFilter {
 	 * 
 	 * @param chunk		raw data received. It might be a part or the whole 
 	 * 		mail body, depending on its length.
+	 * @param allMacros	all macros already sent by the MTA for the current 
+	 * 		connection and message. 
 	 * @return the answer to this packet. Per default a new {@link ContinuePacket}
 	 */
-	public Packet doBody(byte[] chunk) {
+	public Packet doBody(byte[] chunk, HashMap<String,String> allMacros) {
 		return new ContinuePacket();
 	}
 
@@ -393,12 +444,13 @@ public abstract class MailFilter {
 	 * @param headers the list of headers sent by the mail client and
 	 * 		added by other mail filters. It does not contain the headers added
 	 * 		by the MTA itself. Also other filter may still add new ones.
-	 * @param macros  all macros send from the MTA up to now for this connection.
+	 * @param allMacros	all macros already sent by the MTA for the current 
+	 * 		connection and message. 
 	 * 
 	 * @return the answer to this packet. Per default a new {@link ContinuePacket}
 	 */
 	public Packet doEndOfHeader(List<Header> headers, 
-		HashMap<String,String> macros) 
+		HashMap<String,String> allMacros) 
 	{
 		return new ContinuePacket();
 	}
@@ -413,7 +465,7 @@ public abstract class MailFilter {
 	 * if {@link #reassembleMail()} returns <code>true</code> and this filter
 	 * returns {@link Type#BODY} as well as {@link Type#BODYEOB} in its 
 	 * {@link #getCommands()}. However, it is not required to overwrite
-	 * {@link #doBody(byte[])}.
+	 * {@link #doBody(byte[], HashMap)}.
 	 * <p>
 	 * If mail gets reconstructed, {@link Mail#getContent()} usually returns a 
 	 * String, if it is a simple text message, and {@link MimeMultipart} if it 
@@ -427,7 +479,8 @@ public abstract class MailFilter {
 	 * 		added by other mail filters up to now. It does not contain the 
 	 * 		headers added by the MTA itself. Also other filter may still add 
 	 * 		new ones.
-	 * @param macros  all macros sent from the MTA up to now for this connection.
+	 * @param allMacros	all macros already sent by the MTA for the current 
+	 * 		connection and message. 
 	 * @param message the complete message. Might be <code>null</code> if not 
 	 * 		requested.
 	 * 
@@ -435,7 +488,7 @@ public abstract class MailFilter {
 	 * @see MimeMultipart
 	 */
 	public List<Packet> doEndOfMail(List<Header> headers, 
-		HashMap<String,String> macros, Mail message) 
+		HashMap<String,String> allMacros, Mail message) 
 	{
 		return null;
 	}
@@ -449,9 +502,11 @@ public abstract class MailFilter {
 	 * Type: none (may occure in any stage)
 	 * 
 	 * @param cmd	SMTP command issued by the client
+	 * @param allMacros	all macros already sent by the MTA for the current 
+	 * 		connection and message. 
 	 * @return the answer to this packet. Per default a new {@link ContinuePacket}
 	 */
-	public Packet doBadCommand(String cmd) {
+	public Packet doBadCommand(String cmd, HashMap<String,String> allMacros) {
 		return new ContinuePacket();
 	}
 }

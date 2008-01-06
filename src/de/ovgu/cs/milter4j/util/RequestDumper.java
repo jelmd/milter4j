@@ -115,7 +115,7 @@ public class RequestDumper
 	 * {@inheritDoc}
 	 */
 	@Override
-	public void doMacros(HashMap<String,String> allMacros, 
+	public void doMacros(HashMap<String,String> macros, 
 		HashMap<String,String> newMacros) 
 	{
 		if (newMacros == null) {
@@ -132,7 +132,7 @@ public class RequestDumper
 	 * {@inheritDoc}
 	 */
 	@Override
-	public Packet doData() {
+	public Packet doData(HashMap<String,String> macros) {
 		log.info("doData:");
 		return new ContinuePacket();
 	}
@@ -141,7 +141,9 @@ public class RequestDumper
 	 * {@inheritDoc}
 	 */
 	@Override
-	public Packet doHeader(String name, String value) {
+	public Packet doHeader(String name, String value, 
+		HashMap<String,String> macros) 
+	{
 		log.info("doHeader:" + eol + name + ": " + value);
 		return new ContinuePacket();
 	}
@@ -151,7 +153,7 @@ public class RequestDumper
 	 */
 	@Override
 	public Packet doConnect(String hostname, AddressFamily family, int port, 
-		String info) 
+		String info, HashMap<String,String> macros) 
 	{
 		log.info("doConnect:" + eol + "hostname=" + hostname 
 			+ "  addrFamily=" + family.name() + "  port=" + port
@@ -163,7 +165,7 @@ public class RequestDumper
 	 * {@inheritDoc}
 	 */
 	@Override
-	public Packet doHelo(String domain) {
+	public Packet doHelo(String domain, HashMap<String,String> macros) {
 		log.info("doHelo:" + eol + "domain=" + domain);
 		return new ContinuePacket();
 	}
@@ -172,7 +174,7 @@ public class RequestDumper
 	 * {@inheritDoc}
 	 */
 	@Override
-	public Packet doMailFrom(String[] from) {
+	public Packet doMailFrom(String[] from, HashMap<String,String> macros) {
 		StringBuilder buf = new StringBuilder("doMailFrom:").append(eol);
 		for (String arg : from) {
 			buf.append(arg).append(eol);
@@ -185,7 +187,9 @@ public class RequestDumper
 	 * {@inheritDoc}
 	 */
 	@Override
-	public Packet doRecipientTo(String[] recipient) {
+	public Packet doRecipientTo(String[] recipient, 
+		HashMap<String,String> macros) 
+	{
 		StringBuilder buf = new StringBuilder("doRecipientTo:").append(eol);
 		for (String arg : recipient) {
 			buf.append(arg).append(eol);
@@ -198,7 +202,7 @@ public class RequestDumper
 	 * {@inheritDoc}
 	 */
 	@Override
-	public Packet doBody(byte[] chunk) {
+	public Packet doBody(byte[] chunk, HashMap<String,String> macros) {
 		log.info("doBody:" + eol + new String(chunk));
 		return new ContinuePacket();
 	}
@@ -261,7 +265,7 @@ public class RequestDumper
 	 * {@inheritDoc}
 	 */
 	@Override
-	public Packet doBadCommand(String cmd) {
+	public Packet doBadCommand(String cmd, HashMap<String,String> macros) {
 		log.info("doBadCommand:" + eol + cmd);
 		return new ContinuePacket();
 	}

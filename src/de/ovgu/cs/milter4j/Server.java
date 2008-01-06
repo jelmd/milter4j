@@ -55,6 +55,9 @@ public class Server extends Thread
 	private ServerSocketChannel socketChannel;
 	private boolean socketChanged;
 	private boolean filtersChanged;
+	private boolean versionChanged;
+	private boolean rcptToChanged;
+
 	boolean shutdown = false;
 	
 	private FutureTaskExecutor executor;
@@ -126,6 +129,8 @@ public class Server extends Thread
 			newFilters.add(mf.getInstance());
 		}
 		Worker w = new Worker(newFilters, stats);
+		w.enableVersionHeader(cfg.addRecipient());
+		w.enableRcptToHeader(cfg.addRecipient());
 		workers.add(w);
 		return w;
 	}
@@ -136,7 +141,9 @@ public class Server extends Thread
 	@Override
 	public void run() {
 		while (!shutdown) {
-			if (filtersChanged || socketChanged || !socketChannel.isOpen()) {
+			if (filtersChanged || socketChanged || !socketChannel.isOpen()
+				|| rcptToChanged || versionChanged) 
+			{
 				reconfigure();
 			}
 			if (socketChannel == null) {
@@ -260,6 +267,14 @@ public class Server extends Thread
 			initSocket();
 			socketChanged = false;
 		}
+		if (workers != null && (versionChanged || rcptToChanged)) {
+			boolean v = cfg.addVersion();
+			boolean r = cfg.addRecipient();
+			for (Worker t : workers) {
+				t.enableVersionHeader(v);
+				t.enableRcptToHeader(r);
+			}
+		}
 	}
 
 	private void configureShutdown() {
@@ -329,6 +344,10 @@ public class Server extends Thread
 			socketChanged = true;
 		} else if (tmp.equals(Configuration.SHUTDOWN_CHANGED)) {
 			configureShutdown();
+		} else if  (tmp.equals(Configuration.VERSION_CHANGED)) {
+			versionChanged = true;
+		} else if (tmp.equals(Configuration.RCPTTO_CHANGED)) {
+			rcptToChanged = true;
 		}
 	}
 

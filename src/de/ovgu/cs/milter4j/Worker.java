@@ -47,6 +47,7 @@ import de.ovgu.cs.milter4j.reply.NegotiationPacket;
 import de.ovgu.cs.milter4j.reply.Packet;
 import de.ovgu.cs.milter4j.reply.SkipPacket;
 import de.ovgu.cs.milter4j.util.Mail;
+import de.ovgu.cs.milter4j.util.NullFilter;
 
 /**
  * A Worker (mail filter proxy), which handles a single connection initiated by 
@@ -117,6 +118,8 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 	HashMap<MacroStage,HashSet<String>> macros2negotiate;
 	private ReentrantLock configLock;
 	private String version;
+	private boolean addVersion;
+	private boolean addRecipient;
 	
 	/**
 	 * Creates a new worker, which manages the given filters.
@@ -136,6 +139,41 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 		reconfigure(filters);
 	}
 	
+	/**
+	 * Enable/disable the addition of an "X-Milter" header with the value of
+	 * the current milter4j version in use. 
+	 * <p>
+	 * NOTE: An add header reply can be sent in reponse to the "end-of-body" 
+	 * command of the MTA, only. So if all Milters have already sent an accept 
+	 * reply, the MTA may not sent the "end-of-body" command to milter4j and 
+	 * thus the header gets not added.
+	 * <p>
+	 * NOTE: The {@link NullFilter} never sends an accept reply ...
+	 * 
+	 * @param enable	if {@code true} add the header.
+	 */
+	public void enableVersionHeader(boolean enable) {
+		addVersion = enable;
+	}
+
+	/**
+	 * Enable/disable the addition of an "X-RcptTo" header with the value of
+	 * the arguments supplied by the mail client to the MTA via the 
+	 * {@code RCPT TO} command.
+	 * <p>
+	 * NOTE: An add header reply can be sent in reponse to the "end-of-body" 
+	 * command of the MTA, only. So if all Milters have already sent an accept 
+	 * reply, the MTA may not sent the "end-of-body" command to milter4j and 
+	 * thus the header gets not added.
+	 * <p>
+	 * NOTE: The {@link NullFilter} never sends an accept reply ...
+	 * 
+	 * @param enable	if {@code true} add the header.
+	 */
+	public void enableRcptToHeader(boolean enable) {
+		addRecipient = enable;
+	}
+
 	/**
 	 * Get the name of the worker
 	 * @return the worker's name
@@ -509,7 +547,8 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 					for (MailFilter f : todo) {
 						try {
 							Packet p = f.doConnect(cp.getHostname(), 
-								cp.getAddressFaily(), cp.getPort(), cp.getInfo());
+								cp.getAddressFaily(), cp.getPort(), cp.getInfo(),
+								allMacros);
 							if (handleResult(f, packageType, p)) {
 								return false;
 							}
@@ -526,7 +565,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 					final HeloPacket lp = new HeloPacket(data);
 					for (MailFilter f : todo) {
 						try {
-							Packet p = f.doHelo(lp.getDomain());
+							Packet p = f.doHelo(lp.getDomain(), allMacros);
 							if (handleResult(f, packageType, p)) {
 								return false;
 							}
@@ -543,7 +582,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 				if (todo.size() > 0) {
 					for (MailFilter f : todo) {
 						try {
-							Packet p = f.doMailFrom(fp.getFrom());
+							Packet p = f.doMailFrom(fp.getFrom(), allMacros);
 							if (handleResult(f, packageType, p)) {
 								return false;
 							}
@@ -560,11 +599,13 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 				if (todo.size() > 0) {
 					for (MailFilter f : todo) {
 						try {
-							Packet p = f.doRecipientTo(tp.getRecipient());
+							Packet p = 
+								f.doRecipientTo(tp.getRecipient(), allMacros);
 							if (handleResult(f, packageType, p)) {
 								return false;
 							}
-							if (p != null && (p.getType() == de.ovgu.cs.milter4j.reply.Type.REJECT
+							if (p != null 
+								&& (p.getType() == de.ovgu.cs.milter4j.reply.Type.REJECT
 								|| p.getType() == de.ovgu.cs.milter4j.reply.Type.TEMPFAIL)) 
 							{
 								return false;
@@ -582,7 +623,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 				if (todo.size() > 0) {
 					for (MailFilter f : todo) {
 						try {
-							Packet p = f.doData();
+							Packet p = f.doData(allMacros);
 							if (handleResult(f, packageType, p)) {
 								return false;
 							}
@@ -600,7 +641,8 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 				if (todo.size() > 0) {
 					for (MailFilter f : todo) {
 						try {
-							Packet p = f.doHeader(hp.getName(), hp.getValue());
+							Packet p = f.doHeader(hp.getName(), hp.getValue(), 
+								allMacros);
 							if (handleResult(f, packageType, p)) {
 								return false;
 							}
@@ -649,7 +691,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 					}
 					for (MailFilter f : todo) {
 						try {
-							Packet p = f.doBody(bp.getChunk());
+							Packet p = f.doBody(bp.getChunk(), allMacros);
 							if (handleResult(f, packageType, p)) {
 								return false;
 							}
@@ -663,7 +705,13 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 			case BODYEOB:
 				lastMacros.clear();
 				boolean quarantined = false;
-				send(new AddHeaderPacket("X-Milter", version), cmd);
+				if (addVersion) {
+					send(new AddHeaderPacket("X-Milter", version), cmd);
+				}
+				if (addRecipient) {
+					send(new AddHeaderPacket("X-RcptTo", 
+						allMacros.get("{rcpt_addr}")), cmd);
+				}
 				if (toSend != null && !toSend.isEmpty()) {
 					for (Packet p : toSend) {
 						if (p.getType() == de.ovgu.cs.milter4j.reply.Type.QUARANTINE)
@@ -711,7 +759,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 					final UnknownCmdPacket up = new UnknownCmdPacket(data);
 					for (MailFilter f : todo) {
 						try {
-							Packet p = f.doBadCommand(up.getCmd());
+							Packet p = f.doBadCommand(up.getCmd(), allMacros);
 							if (handleResult(f, packageType, p)) {
 								return false;
 							}
