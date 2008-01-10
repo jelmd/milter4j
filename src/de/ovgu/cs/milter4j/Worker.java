@@ -189,14 +189,17 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 	 */
 	public void prepare(SocketChannel channel) {
 		if (this.channel != null) {
-			log.warn("Old socket not cleaned up");
+			log.warn("Cleaning up old socket");
+			try { this.channel.close(); } catch (IOException e) { /* ignore */ }
 		}
 		this.channel = channel;
-		try {
-			channel.socket().setSoTimeout(10*60*1000); // make sure, we get it back
-		} catch (SocketException e) {
-			log.warn(e.getLocalizedMessage());
-			log.debug("prepare()", e);
+		if (channel != null) {
+			try {
+				channel.socket().setSoTimeout(10*60*1000); // make sure, we get it back
+			} catch (SocketException e) {
+				log.warn(e.getLocalizedMessage());
+				log.debug("prepare()", e);
+			}
 		}
 	}
 
@@ -882,6 +885,9 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 	 */
 	public Object call() {
 		boolean last = false;
+		if (channel == null) {
+			return null;
+		}
 		while(!last) {
 			try {
 				while(channel.isOpen() && !readPacket()) {

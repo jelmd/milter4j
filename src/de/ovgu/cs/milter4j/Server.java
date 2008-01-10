@@ -168,7 +168,7 @@ public class Server extends Thread
 				}
 				sc = null; // indicate, everything is ok
 			} catch (RejectedExecutionException e) {
-				log.warn(e.getLocalizedMessage());
+				log.warn("Thread Pool rejected execution: " + e.getLocalizedMessage());
 				if (log.isDebugEnabled()) {
 					log.debug("run", e);
 				}
@@ -176,7 +176,8 @@ public class Server extends Thread
 			} catch (Exception e) {
 				// might be IO or RejectedExecutionException
 				if (!shutdown) {
-					log.warn(e.getLocalizedMessage());
+					log.warn(e.getClass().getSimpleName() + ": " 
+						+ e.getLocalizedMessage());
 					if (log.isDebugEnabled()) {
 						log.debug("run", e);
 					}

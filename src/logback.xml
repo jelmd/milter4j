@@ -14,7 +14,7 @@
 	<file>/var/log/milter4j/milter.log</file>
 	<append>true</append>
 	<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-		<fileNamePattern>%d.milter.log.gz</fileNamePattern>
+		<fileNamePattern>/var/log/milter4j/%d.milter.log.gz</fileNamePattern>
 	</rollingPolicy>
 	<layout class="ch.qos.logback.classic.PatternLayout">
 		<pattern>%date{yyyy-MM-dd HH:mm:ss.SSS} %level [%thread, %file:%line] - %message%n</pattern>
