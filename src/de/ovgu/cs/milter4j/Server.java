@@ -168,7 +168,12 @@ public class Server extends Thread
 				}
 				sc = null; // indicate, everything is ok
 			} catch (RejectedExecutionException e) {
-				log.warn("Thread Pool rejected execution: " + e.getLocalizedMessage());
+				log.warn("Thread Pool execution limit reached: " 
+					+ executor.getActiveCount() + "/" 
+					+ executor.getMaximumPoolSize());
+				log.info("Increasing the 'worker' config attribute value may help"
+					+ " (which may overload the machine) or limit the number of"
+					+ " active concurrent sendmail connections");
 				if (log.isDebugEnabled()) {
 					log.debug("run", e);
 				}
