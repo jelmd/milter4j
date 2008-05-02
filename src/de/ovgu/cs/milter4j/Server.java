@@ -256,6 +256,7 @@ public class Server extends Thread
 				for (Worker worker : workers) {
 					worker.shutdown();
 				}
+				workers.clear();
 			}
 			ArrayList<MailFilter> newFilters = new ArrayList<MailFilter>();
 			MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
