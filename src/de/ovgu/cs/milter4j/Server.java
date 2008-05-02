@@ -65,7 +65,7 @@ public class Server extends Thread
 	private ArrayList<Worker> workers;
 	private StatsCollector stats;
 	Thread shutdownListener;
-	private int workerOffset;
+	private int workerOffset = 0;
 	
 	private static final ObjectName getMBeanName(boolean server) { 
 		try {
@@ -121,7 +121,8 @@ public class Server extends Thread
 				workers = new ArrayList<Worker>();
 			} else {
 				int stop = workerOffset;
-				for (;workerOffset < workers.size(); workerOffset++) {
+				int size = workers.size();
+				for (;workerOffset < size; workerOffset++) {
 					Worker w = workers.get(workerOffset);
 					if (w.isReady()) {
 						workerOffset++;
@@ -129,6 +130,9 @@ public class Server extends Thread
 					}
 				}
 				workerOffset = 0;
+				if (stop > size) {
+					stop = size;
+				}
 				for (;workerOffset < stop; workerOffset++) {
 					Worker w = workers.get(workerOffset);
 					if (w.isReady()) {
@@ -243,7 +247,7 @@ public class Server extends Thread
 		}
 	}
 	
-	private ReentrantLock lock;
+	private ReentrantLock lock = new ReentrantLock();
 
 	private void initFilters() {
 		lock.lock();
@@ -293,8 +297,7 @@ public class Server extends Thread
 			if (!cfg.reconfigure()) {
 				// params are the same, but the config (e.g. read via file) might
 				// have been changed - so force reconfig of filters as well
-				initFilters();
-				filtersChanged = false;
+				filtersChanged = true;
 			}
 		}
 	}
@@ -475,25 +478,31 @@ public class Server extends Thread
 		if (shutdownListener != null) {
 			shutdownListener.interrupt();
 		}
-		try {
-			socketChannel.close();
-		} catch (IOException e1) {
-			log.warn(e1.getLocalizedMessage());
-			if (log.isDebugEnabled()) {
-				log.debug("method()", e1);
+		if (socketChannel != null) {
+			try {
+				socketChannel.close();
+			} catch (Exception e1) {
+				log.warn(e1.getLocalizedMessage());
+				if (log.isDebugEnabled()) {
+					log.debug("method()", e1);
+				}
 			}
 		}
 		cfg.remove(this);
 		executor.shutdown();
-		filters.clear();
+		if (filters != null) {
+			filters.clear();
+		}
 		if (workers != null) {
 			for (Worker worker : workers) {
 				worker.shutdown();
 			}
 		}
 		MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-		stats.removeAll(mbs);
-		stats.shutdown();
+		if (stats != null) {
+			stats.removeAll(mbs);
+			stats.shutdown();
+		}
 		try {
 			mbs.unregisterMBean(getMBeanName(false));
 		} catch (Exception e) {
