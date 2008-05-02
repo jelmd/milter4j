@@ -21,10 +21,10 @@ import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
 
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
@@ -62,9 +62,10 @@ public class Server extends Thread
 	
 	private FutureTaskExecutor executor;
 	private ArrayList<MailFilter> filters;
-	private ConcurrentSkipListSet<Worker> workers;
+	private ArrayList<Worker> workers;
 	private StatsCollector stats;
 	Thread shutdownListener;
+	private int workerOffset;
 	
 	private static final ObjectName getMBeanName(boolean server) { 
 		try {
@@ -114,25 +115,42 @@ public class Server extends Thread
 	}
 
 	private Worker getFreeWorker() {
-		if (workers == null) {
-			workers = new ConcurrentSkipListSet<Worker>();
-		} else {
-			for (Worker t : workers) {
-				if (t.isReady()) {
-					return t;
+		lock.lock();
+		try {
+			if (workers == null) {
+				workers = new ArrayList<Worker>();
+			} else {
+				int stop = workerOffset;
+				for (;workerOffset < workers.size(); workerOffset++) {
+					Worker w = workers.get(workerOffset);
+					if (w.isReady()) {
+						workerOffset++;
+						return w;
+					}
+				}
+				workerOffset = 0;
+				for (;workerOffset < stop; workerOffset++) {
+					Worker w = workers.get(workerOffset);
+					if (w.isReady()) {
+						workerOffset++;
+						return w;
+					}
 				}
 			}
+			// since thread per worker, make sure, that each one has its own instance
+			ArrayList<MailFilter> newFilters  = new ArrayList<MailFilter>();
+			for (MailFilter mf : filters) {
+				newFilters.add(mf.getInstance());
+			}
+			Worker w = new Worker(newFilters, stats);
+			w.enableVersionHeader(cfg.addRecipient());
+			w.enableRcptToHeader(cfg.addRecipient());
+			workers.add(w);
+			workerOffset = 0;
+			return w;
+		} finally {
+			lock.unlock();
 		}
-		// since thread per worker, make sure, that each one has its own instance
-		ArrayList<MailFilter> newFilters  = new ArrayList<MailFilter>();
-		for (MailFilter mf : filters) {
-			newFilters.add(mf.getInstance());
-		}
-		Worker w = new Worker(newFilters, stats);
-		w.enableVersionHeader(cfg.addRecipient());
-		w.enableRcptToHeader(cfg.addRecipient());
-		workers.add(w);
-		return w;
 	}
 
 	/**
@@ -225,38 +243,47 @@ public class Server extends Thread
 		}
 	}
 	
+	private ReentrantLock lock;
+
 	private void initFilters() {
-		if (workers != null) {
-			for (Worker worker : workers) {
-				worker.shutdown();
-			}
-		}
-		if (filters == null) {
-			filters = new ArrayList<MailFilter>();
-		} else {
-			filters.clear();
-		}
-		MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-		stats.removeAll(mbs);
-		String[] cff = cfg.getFilters();
-		if (cff.length == 0) {
-			return;
-		}
-		// order is important
-		for (int i=0; i < cff.length; i++) {
-			String[] tmp = cff[i].split(";", 2);
-			try {
-				Class<?> clazz = Class.forName(tmp[0]);
-				Constructor<?> c = clazz.getConstructor(String.class);
-				MailFilter f = (MailFilter) c.newInstance(tmp[1]);
-				filters.add(f);
-				stats.add(f.getStatName(), mbs);
-			} catch (Exception e) {
-				log.warn(e.getLocalizedMessage());
-				if (log.isDebugEnabled()) {
-					log.debug("initFilters", e);
+		lock.lock();
+		try {
+			if (workers != null) {
+				for (Worker worker : workers) {
+					worker.shutdown();
 				}
 			}
+			ArrayList<MailFilter> newFilters = new ArrayList<MailFilter>();
+			MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
+			stats.removeAll(mbs);
+			String[] cff = cfg.getFilters();
+			if (cff.length == 0) {
+				return;
+			}
+			// order is important
+			for (int i=0; i < cff.length; i++) {
+				String[] tmp = cff[i].split(";", 2);
+				try {
+					Class<?> clazz = Class.forName(tmp[0]);
+					Constructor<?> c = clazz.getConstructor(String.class);
+					MailFilter f = (MailFilter) c.newInstance(tmp[1]);
+					newFilters.add(f);
+					stats.add(f.getStatName(), mbs);
+				} catch (Exception e) {
+					log.warn(e.getLocalizedMessage());
+					if (log.isDebugEnabled()) {
+						log.debug("initFilters", e);
+					}
+				}
+			}
+			if (filters == null) {
+				filters = newFilters;
+			} else {
+				filters.clear();
+				filters.addAll(newFilters);
+			}
+		} finally {
+			lock.unlock();
 		}
 	}
 

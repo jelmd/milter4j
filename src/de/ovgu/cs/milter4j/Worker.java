@@ -280,7 +280,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 	private void send(Packet p, Type cmd) throws IOException {
 		if (channel != null && channel.isOpen()) {
 			log.debug("Sending packet {}", p);
-			if (p.getType() != de.ovgu.cs.milter4j.reply.Type.CONTINUE) {
+			if (p.getType() != de.ovgu.cs.milter4j.reply.Type.CONTINUE && stats != null) {
 				stats.increment(GLOB_STAT_NAME, cmd, p.getType());
 			}
 			p.send(channel);
@@ -293,7 +293,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 	 * 		or some a managed milter is still busy.
 	 */
 	public boolean isReady() {
-		return channel == null;
+		return channel == null && stats != null;
 	}
 	
 	/**
@@ -439,13 +439,14 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 		Packet result = null;
 		boolean stop = false;
 		for (Packet p : res) {
-			if (p == null) {
+			if (p == null && stats != null) {
 				stats.increment(filter.getStatName(), cmd, 
 					de.ovgu.cs.milter4j.reply.Type.CONTINUE);
 			}
 			if (result == null && p != null && !stop) {
 				de.ovgu.cs.milter4j.reply.Type r = p.getType();
-				stats.increment(filter.getStatName(), cmd, r);
+				if (stats != null) 
+					stats.increment(filter.getStatName(), cmd, r);
 				switch (r) {
 					case REJECT:
 					case TEMPFAIL:
@@ -534,9 +535,9 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 				lastMacros.putAll(mp.getMacros());
 				if (todo.size() > 0) {
 					for (MailFilter f : todo) {
-						stats.increment(f.getStatName(), cmd, 
-							de.ovgu.cs.milter4j.reply.Type.CONTINUE);
 						try {
+							stats.increment(f.getStatName(), cmd, 
+								de.ovgu.cs.milter4j.reply.Type.CONTINUE);
 							f.doMacros(allMacros, mp.getMacros());
 						} catch (Exception e) {
 							log.warn(f.getName() + ": " + e.getLocalizedMessage());
@@ -787,23 +788,38 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 				break;
 			case OPTNEG:
 				final NegotiationPacket rp = new NegotiationPacket(data);
-				stats.increment(GLOB_STAT_NAME, packageType, 
-						de.ovgu.cs.milter4j.reply.Type.CONTINUE);
-				negotiate(rp);
-				send(rp, cmd);
+				try {
+					stats.increment(GLOB_STAT_NAME, packageType, 
+							de.ovgu.cs.milter4j.reply.Type.CONTINUE);
+					negotiate(rp);
+					send(rp, cmd);
+				} catch (Exception e) {
+					log.warn(e.getLocalizedMessage());
+					log.debug("handlePaket", e);
+				}
 				break;
 			case QUIT:
 			case QUIT_NC:
-				for (MailFilter f : filters) {
-					stats.increment(f.getStatName(), packageType, 
-						de.ovgu.cs.milter4j.reply.Type.CONTINUE);
+				try {
+					for (MailFilter f : filters) {
+						stats.increment(f.getStatName(), packageType, 
+							de.ovgu.cs.milter4j.reply.Type.CONTINUE);
+					}
+				} catch (Exception e) {
+					log.warn(e.getLocalizedMessage());
+					log.debug("handlePaket", e);
 				}
 				cleanup(false);
 				return true;
 			case ABORT:
-				for (MailFilter f : filters) {
-					stats.increment(f.getStatName(), packageType, 
-						de.ovgu.cs.milter4j.reply.Type.CONTINUE);
+				try {
+					for (MailFilter f : filters) {
+						stats.increment(f.getStatName(), packageType, 
+							de.ovgu.cs.milter4j.reply.Type.CONTINUE);
+					}
+				} catch (Exception e) {
+					log.warn(e.getLocalizedMessage());
+					log.debug("handlePaket", e);
 				}
 				cleanup(true);
 				break;
@@ -893,7 +909,8 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 				while(channel.isOpen() && !readPacket()) {
 					// try again
 				}
-				last = channel != null && channel.isOpen() && data != null
+				last = channel != null
+					&& channel.isOpen() && data != null
 					? handlePaket(packageType, data) 
 					: true;
 			} catch (AsynchronousCloseException e1) {
