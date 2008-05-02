@@ -102,7 +102,7 @@ public class Server extends Thread
 		configureShutdown();
 		socketChanged = true;
 		filtersChanged = true;
-		reconfigure();
+		redoConf();
 		try {
 			mbs.registerMBean(this, getMBeanName(true));
 		} catch (Exception e) {
@@ -144,7 +144,7 @@ public class Server extends Thread
 			if (filtersChanged || socketChanged || !socketChannel.isOpen()
 				|| rcptToChanged || versionChanged) 
 			{
-				reconfigure();
+				redoConf();
 			}
 			if (socketChannel == null) {
 				log.warn("socket unavailable - terminating");
@@ -259,12 +259,27 @@ public class Server extends Thread
 			}
 		}
 	}
-	
+
+	@Override
+	public void reconfigure() {
+		if (cfg != null) {
+			cfg.reconfigure();
+		}
+	}
+
+	@Override
+	public String listConfig() {
+		if (cfg != null) {
+			return cfg.listConfig();
+		}
+		return "";
+	}
+
 	/**
 	 * Reconfigure socket and/or filters, depending on the current flagged
 	 * change state.
 	 */
-	private void reconfigure() {
+	private void redoConf() {
 		if (filtersChanged) {
 			initFilters();
 			filtersChanged = false;

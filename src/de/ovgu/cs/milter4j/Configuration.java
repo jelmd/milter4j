@@ -11,8 +11,11 @@ package de.ovgu.cs.milter4j;
 
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
+import java.io.StringWriter;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -226,7 +229,32 @@ public class Configuration {
 		Misc.fastForwardToEndOfElement(in);
 	}
 
-	private void reconfigure() {
+	/**
+	 * List the content of the currently used config file as plain text
+	 * @return a possible empty string
+	 */
+	public String listConfig() {
+		StringWriter r = new StringWriter();
+		try {
+			BufferedReader in = new BufferedReader(new FileReader(conf));
+			String line = null;
+			while ((line = in.readLine()) != null) {
+				r.write(line);
+				r.write('\n');
+			}
+		} catch (Exception e) {
+			log.warn(e.getLocalizedMessage());
+			if (log.isDebugEnabled()) {
+				log.debug("method()", e);
+			}
+		}
+		return r.toString();
+	}
+	/**
+	 * Re-read the currently configured config file and inform all listeners
+	 * about possible changes.
+	 */
+	public void reconfigure() {
 		log.info("Reading config file " + conf.getAbsolutePath());
 		StreamSource src = null; 
 		try {

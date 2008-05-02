@@ -83,4 +83,15 @@ public interface ServerMBean {
 	 * Shutdown the server gracefully
 	 */
 	public void shutdown();
+	
+	/**
+	 * Lsit the current config file in use.
+	 * @return the content of the config file as plain text
+	 */
+	public String listConfig();
+	
+	/**
+	 * Reconfigure the service by re-reading its config file
+	 */
+	public void reconfigure();
 }
