@@ -263,7 +263,12 @@ public class Server extends Thread
 	@Override
 	public void reconfigure() {
 		if (cfg != null) {
-			cfg.reconfigure();
+			if (!cfg.reconfigure()) {
+				// params are the same, but the config (e.g. read via file) might
+				// have been changed - so force reconfig of filters as well
+				initFilters();
+				filtersChanged = false;
+			}
 		}
 	}
 

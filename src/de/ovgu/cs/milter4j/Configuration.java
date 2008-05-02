@@ -252,9 +252,15 @@ public class Configuration {
 	}
 	/**
 	 * Re-read the currently configured config file and inform all listeners
-	 * about possible changes.
+	 * about possible changes. NOTE: This method doesn't know anything about
+	 * the MailFilter instance configs itself (or how to handle them), and thus 
+	 * determins the "filters changed" state by the given parameter names and 
+	 * values, only!
+	 * 
+	 * @return {@code true} if filter configuration (number and or is parameters)
+	 * 		were changed.
 	 */
-	public void reconfigure() {
+	public boolean reconfigure() {
 		log.info("Reading config file " + conf.getAbsolutePath());
 		StreamSource src = null; 
 		try {
@@ -264,11 +270,11 @@ public class Configuration {
 			if (log.isDebugEnabled()) {
 				log.debug("method()", e);
 			}
-			return;
+			return false;
 		}
 		XMLStreamReader reader = Misc.getReader(src, "config", false);
 		if (reader == null) {
-			return;
+			return false;
 		}
 		ArrayList<String> newfilters = new ArrayList<String>();
 		InetSocketAddress addr = null;
@@ -325,13 +331,13 @@ public class Configuration {
 			if (log.isDebugEnabled()) {
 				log.debug("method()", e);
 			}
-			return;
+			return false;
 		} catch (Exception x) {
 			log.warn(x.getLocalizedMessage());
 			if (log.isDebugEnabled()) {
 				log.debug("method()", x);
 			}
-			return;
+			return false;
 		} finally {
 			try { reader.close(); } catch (Exception e) { /* ignore */ }
 			try { src.getInputStream().close(); } catch (Exception e) { 
@@ -369,7 +375,18 @@ public class Configuration {
 				pcs.firePropertyChange(RCPTTO_CHANGED, old, newDisableRcptTo);
 			}
 		}
-		if (newfilters.size() != filter.size()) {
+		boolean fchanged = false;
+		if  (newfilters.size() == filter.size()) {
+			for (String f : newfilters) {
+				if (!filter.contains(f)) {
+					fchanged = true;
+					break;
+				}
+			}
+		} else {
+			fchanged = true;
+		}
+		if (fchanged) {
 			newfilters.trimToSize();
 			ArrayList<String> old = filter;
 			filter = newfilters;
@@ -378,6 +395,7 @@ public class Configuration {
 			}
 		}
 		log.info("configuration update done");
+		return fchanged;
 	}
 	
 	private void setSampleRates(String param) {
