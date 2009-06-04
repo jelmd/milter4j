@@ -46,7 +46,7 @@ public class ChangeHeaderPacket
 	public ChangeHeaderPacket(int ordinal, String name, String value) {
 		super(Type.CHGHEADER);
 		this.name = name == null ? "" : name.trim();
-		if (name.length() == 0) {
+		if (this.name.length() == 0) {
 			throw new IllegalArgumentException("header name cannot be empty");
 		}
 		if (ordinal < 1) {

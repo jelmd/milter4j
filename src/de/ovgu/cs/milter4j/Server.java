@@ -199,7 +199,9 @@ public class Server extends Thread
 				if (log.isDebugEnabled()) {
 					log.debug("run", e);
 				}
-				w.prepare(null);
+				if (w != null) {
+					w.prepare(null);
+				}
 			} catch (Exception e) {
 				// might be IO or RejectedExecutionException
 				if (!shutdown) {
@@ -292,6 +294,9 @@ public class Server extends Thread
 		}
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public void reconfigure() {
 		if (cfg != null) {
@@ -303,6 +308,9 @@ public class Server extends Thread
 		}
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public String listConfig() {
 		if (cfg != null) {
@@ -371,7 +379,9 @@ public class Server extends Thread
 						}
 					}
 				} finally {
-					try { ssc.close(); } catch (Exception e) { /* ignore */ }
+					if (ssc != null) {
+						try { ssc.close(); } catch (Exception e) { /* ignore */ }
+					}
 				}
 				shutdownListener = null;
 				shutdown();
@@ -547,7 +557,9 @@ public class Server extends Thread
 					log.debug("main", e);
 				}
 			} finally {
-				try { sc.close(); } catch (Exception x) { /* ignore */ }
+				if (sc != null) {
+					try { sc.close(); } catch (Exception x) { /* ignore */ }
+				}
 			}
 		} else {
 			Server s = new Server(config);

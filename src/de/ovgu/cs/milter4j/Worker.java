@@ -231,7 +231,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 					mods2handle.addAll(m);
 				}
 				mtaShouldSentRejected |= f.wantsRejectedRecipients();
-				if (f.reassembleMail() && t.contains(Type.BODY) 
+				if (f.reassembleMail() && t != null && t.contains(Type.BODY) 
 					&& t.contains(Type.BODYEOB)) 
 				{
 					assembleMessage4.add(f);
@@ -297,7 +297,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 	}
 	
 	/**
-	 * Fille the buffer from the key's channel
+	 * Fill the buffer from the key's channel
 	 * @param key	channel provider
 	 * @param buf	buffer
 	 * @return <code>true</code> if channel was closed by MTA
@@ -314,7 +314,8 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 		int count = 0;
 		if (log.isDebugEnabled()) {
 			log.debug("Trying to read {} buffer ({} byte)", 
-				(buf == header ? "header" : "data"), buf.remaining());
+				(buf == header ? "header" : "data"), 
+				Integer.valueOf(buf.remaining()));
 		}
 		while (buf.hasRemaining() && ((count = channel.read(buf)) != -1)) {
 			// read again
@@ -433,6 +434,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 	 * 		further filter invocations should occure.
 	 * @throws IOException on I/O error
 	 */
+	@SuppressWarnings("fallthrough")
 	private boolean handleResult(MailFilter filter, Type cmd, Packet... res) 
 		throws IOException 
 	{
@@ -555,7 +557,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 					for (MailFilter f : todo) {
 						try {
 							Packet p = f.doConnect(cp.getHostname(), 
-								cp.getAddressFaily(), cp.getPort(), cp.getInfo(),
+								cp.getAddressFamily(), cp.getPort(), cp.getInfo(),
 								allMacros);
 							if (handleResult(f, packageType, p)) {
 								return false;
@@ -861,14 +863,15 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 		if (data.hasRemaining()) {
 			if (log.isDebugEnabled()) {
 				log.debug("Receiving {} with 1 + {} bytes of data", 
-					packageType, data.remaining());
+					packageType, Integer.valueOf(data.remaining()));
 			}
 			fillBuffer(data);
 		}
 		if (data.hasRemaining()) {
 			return false;
 		}
-		log.debug("{}: {} bytes of data received", packageType, data.limit());
+		log.debug("{}: {} bytes of data received", packageType, 
+			Integer.valueOf(data.limit()));
 		data.flip();
 		header.clear();
 		return true;

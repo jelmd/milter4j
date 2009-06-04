@@ -78,6 +78,7 @@ public class Mail
 			if (log.isDebugEnabled()) {
 				log.debug("method()", e);
 			}
+			return new byte[0];
 		}
 		return bos.toByteArray();
 	}

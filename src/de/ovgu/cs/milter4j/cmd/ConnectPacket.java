@@ -60,7 +60,7 @@ public class ConnectPacket
 	 * Get the address family of the client to MTA connection.
 	 * @return	the adress family of the connection
 	 */
-	public AddressFamily getAddressFaily() {
+	public AddressFamily getAddressFamily() {
 		return family;
 	}
 

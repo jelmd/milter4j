@@ -60,11 +60,13 @@ public class AddRecipientPacket
 			throw new IllegalArgumentException("empty recipient not allowed");
 		}
 		ArrayList<String> l = new ArrayList<String>(5);
-		for (String m : args) {
-			if (m != null) {
-				String tmp = m.trim();
-				if (tmp.length() > 0) {
-					l.add(tmp);
+		if (args != null) {
+			for (String m : args) {
+				if (m != null) {
+					String tmp = m.trim();
+					if (tmp.length() > 0) {
+						l.add(tmp);
+					}
 				}
 			}
 		}
