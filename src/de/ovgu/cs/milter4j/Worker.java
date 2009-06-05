@@ -534,7 +534,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 			case MACRO:
 				final MacroPacket mp = new MacroPacket(data);
 				allMacros.putAll(mp.getMacros());
-				lastMacros.putAll(mp.getMacros());
+				lastMacros.putAll(mp.getMacros()); // collect for HELO
 				if (todo.size() > 0) {
 					for (MailFilter f : todo) {
 						try {
