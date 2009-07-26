@@ -205,7 +205,7 @@ public class FilterStatsConsole
 				List<String> tHeaders = new ArrayList<String>();
 				tHeaders.addAll(idxNames);
 				for (String name : idxNames) {
-					if (! (ct.getType(name) instanceof SimpleType)) {
+					if (! (ct.getType(name) instanceof SimpleType<?>)) {
 						allSimple = false;
 					}
 				}
@@ -213,7 +213,7 @@ public class FilterStatsConsole
 					if (!idxNames.contains(name)) {
 						tHeaders.add(name);
 					}
-					if (! (ct.getType(name) instanceof SimpleType)) {
+					if (! (ct.getType(name) instanceof SimpleType<?>)) {
 						allSimple = false;
 					}
 				}
