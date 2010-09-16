@@ -153,6 +153,7 @@ public class FilterStats implements FilterStatsMBean {
 	/**
 	 * {@inheritDoc}
 	 */
+	@Override
 	public TabularData getStats() {
 		TabularData data = new TabularDataSupport(FILTER_CMD_TYPE);
 		CompositeData[] cd = new CompositeData[stats.length];
@@ -180,6 +181,7 @@ public class FilterStats implements FilterStatsMBean {
 	/**
 	 * {@inheritDoc}
 	 */
+	@Override
 	public String getName() {
 		return name;
 	}

@@ -902,6 +902,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 	/**
 	 * {@inheritDoc}
 	 */
+	@Override
 	public Object call() {
 		boolean last = false;
 		if (channel == null) {

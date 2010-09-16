@@ -421,6 +421,7 @@ public class Server extends Thread
 	/**
 	 * {@inheritDoc}
 	 */
+	@Override
 	public int getWorkers() {
 		return workers == null ? 0 : workers.size();
 	}
@@ -428,6 +429,7 @@ public class Server extends Thread
 	/**
 	 * {@inheritDoc}
 	 */
+	@Override
 	public String[] getFilterNames() {
 		String[] list = new String[filters.size()];
 		for (int i=0; i < list.length; i++) {
@@ -439,12 +441,14 @@ public class Server extends Thread
 	/**
 	 * {@inheritDoc}
 	 */
+	@Override
 	public Date getStartTime() {
 		return stats.getStartTime();
 	}
 	/**
 	 * {@inheritDoc}
 	 */
+	@Override
 	public long[] getSampleRates() {
 		return stats.getSampleRates();
 	}
@@ -452,6 +456,7 @@ public class Server extends Thread
 	/**
 	 * {@inheritDoc}
 	 */
+	@Override
 	public TabularData getHistory() {
 		return stats.getHistory(0, true);
 	}
@@ -459,6 +464,7 @@ public class Server extends Thread
 	/**
 	 * {@inheritDoc}
 	 */
+	@Override
 	public TabularData getHistory(int idx, boolean relative) {
 		return stats.getHistory(idx, relative);
 	}
@@ -466,6 +472,7 @@ public class Server extends Thread
 	/**
 	 * {@inheritDoc}
 	 */
+	@Override
 	public long getConnections() {
 		return stats.getConnections();
 	}
@@ -473,12 +480,14 @@ public class Server extends Thread
 	/**
 	 * {@inheritDoc}
 	 */
+	@Override
 	public String getVersion() {
 		return new Version().getVersionInfo();
 	}
 	/**
 	 * {@inheritDoc}
 	 */
+	@Override
 	public void shutdown() {
 		log.info("shutdown initiated ...");
 		if (shutdown) {

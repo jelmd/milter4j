@@ -113,7 +113,7 @@ public class FilterStatsConsole
 			new SwingWorker<String[], Object>() 
 		{
 			@Override
-			protected String[] doInBackground() throws Exception {
+			protected String[] doInBackground()  {
 				return sbean.getFilterNames();
 			}
 			
@@ -181,7 +181,7 @@ public class FilterStatsConsole
 			new SwingWorker<DefaultTableModel, Object>() 
 		{
 			@Override
-			protected DefaultTableModel doInBackground() throws Exception {
+			protected DefaultTableModel doInBackground() {
 				FilterStatsMBean bean = null;
 				try {
 					ObjectName name = 
@@ -384,6 +384,7 @@ public class FilterStatsConsole
 			}
 		};
 		SwingUtilities.invokeAndWait(new Runnable() {
+			@Override
 			public void run() {
 				createAndShowGUI(cons);
 			}

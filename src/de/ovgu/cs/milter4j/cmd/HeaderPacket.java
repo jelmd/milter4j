@@ -31,6 +31,7 @@ public class HeaderPacket
 	 */
 	public HeaderPacket(ByteBuffer data) {
 		super(Type.HEADER);
+		// per RFC 2822, 2.2.  ASCII chars only, so casting byte -> char is OK
 		if (data.hasRemaining()) {
 			StringBuilder dst = getString(null, data);
 			name = dst.toString();

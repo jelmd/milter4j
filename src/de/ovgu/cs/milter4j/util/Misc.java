@@ -177,6 +177,7 @@ public class Misc {
 	public static final XMLResolver getIgnoringXMLResolver() {
 		if (IGNORING_XML_RESOLVER == null) {
 			IGNORING_XML_RESOLVER = new XMLResolver() {
+				@Override
 				public Object resolveEntity(String publicID, String systemID,
 					String baseURI, String namespace)
 				{
