@@ -40,7 +40,7 @@ public class ReplyPacket
 	// From RFC 2034 Section 4 status-code ::= class "." subject "." detail
 	// class ::= "2" / "4" / "5" subject ::= 1*3digit detail ::= 1*3digit
 	// and class must match reply
-	private String checkXcode(String code, int reply) {
+	private static String checkXcode(String code, int reply) {
 		String tmp[] = code.split("\\.");
 		int res[] = new int[3];
 		try {

@@ -186,7 +186,7 @@ public class Configuration {
 		return filter.toArray(new String[filter.size()]);
 	}
 	
-	private InetSocketAddress getAddress(XMLStreamReader in) 
+	private static InetSocketAddress getAddress(XMLStreamReader in) 
 		throws XMLStreamException 
 	{
 		String aPort = in.getAttributeValue(null, "port");
@@ -210,7 +210,7 @@ public class Configuration {
 			: new InetSocketAddress(hostname, port);
 	}
 
-	private void addFilter(XMLStreamReader in, ArrayList<String> filters) 
+	private static void addFilter(XMLStreamReader in, ArrayList<String> filters) 
 		throws XMLStreamException 
 	{
 		String aClass = in.getAttributeValue(null, "class");
