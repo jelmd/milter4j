@@ -497,7 +497,7 @@ public abstract class MailFilter {
 	 * Handle bad/unknown SMTP commands issued by the mail-client.
 	 * <p>
 	 * Only called, if {@link #getCommands()} contains {@link Type#UNKNOWN}
-	 * and the MTA supüports this feature.
+	 * and the MTA supports this feature.
 	 * <p>
 	 * Type: none (may occure in any stage)
 	 * 

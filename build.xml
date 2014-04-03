@@ -1,5 +1,6 @@
 <!-- $Id$ -->
 <project name="milter4j" default="dist"  basedir=".">
+	<property name="build.sysclasspath" value="ignore"/>
 	
 	<property name="codebase"   value="de/ovgu/cs/milter4j"/>
 	<property name="product.name" value="Mail Filter for Java"/>
@@ -10,7 +11,7 @@
 	<!-- new features, but backward compatible -->
 	<property name="version.minor" value="1"/>
 	<!-- developer built or maintainance relase or bug fix number -->
-	<property name="version.tiny"  value="3"/>
+	<property name="version.tiny"  value="4"/>
 	<!-- status: alpha | beta | gamma | final | "" ; "" means final -->
 	<property name="version.note"  value=""/>
 
@@ -70,7 +71,7 @@
 
 	<property name="taglets.jar" location="/local/apps/javax/taglets.jar" />
 
-	<property name="jdkAPI" value="http://java.sun.com/javase/6/docs/api/" />
+	<property name="jdkAPI" value="http://docs.oracle.com/javase/7/docs/api/" />
 	<property name="commons-httpclientAPI" 
 		value="http://commons.apache.org/httpclient/apidocs/" />
 
@@ -165,7 +166,7 @@
 			deprecation="${deprecation}" classpathref="classpath.extensions"
 			encoding="${compile.encoding}"
 			listfiles="${listfiles}">
-			<compilerarg value="-Xlint:unchecked" compiler="javac1.5" />
+			<compilerarg value="-Xlint:unchecked" compiler="javac1.7" />
 		</javac>
 	</target>
 
@@ -178,6 +179,7 @@
 			encoding="${compile.encoding}" listfiles="false"
 			includeantruntime="false"
 		>
+			<compilerarg value="-Xlint:unchecked" compiler="javac1.7" />
 		</javac>
 	</target>
 
@@ -190,6 +192,7 @@
 			encoding="${compile.encoding}" listfiles="false"
 			includeantruntime="false"
 		>
+			<compilerarg value="-Xlint:unchecked" compiler="javac1.7" />
 		</javac>
 	</target>
 

@@ -64,8 +64,8 @@ public class FilterStatsConsole
 	static final Logger log = Logger.getLogger(FilterStatsConsole.class.getName());
 	MBeanServerConnection server;
 	ServerMBean sbean;
-	DefaultComboBoxModel filterComboModel;
-	JComboBox filterCombo;
+	DefaultComboBoxModel<String> filterComboModel;
+	JComboBox<String> filterCombo;
 	private JButton filterUpdateButton;
 	private JButton statsUpdateButton;
 	JScrollPane statsPane;
@@ -77,8 +77,8 @@ public class FilterStatsConsole
 	 */
 	public FilterStatsConsole() {
 		super(new BorderLayout());
-		filterComboModel = new DefaultComboBoxModel(new String[0]);
-		filterCombo = new JComboBox(filterComboModel);
+		filterComboModel = new DefaultComboBoxModel<String>(new String[0]);
+		filterCombo = new JComboBox<String>(filterComboModel);
 		filterCombo.addItemListener(new ItemListener() {
 			@Override
 			public void itemStateChanged(ItemEvent e) {
