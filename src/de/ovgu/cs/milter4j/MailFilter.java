@@ -72,7 +72,7 @@ import de.ovgu.cs.milter4j.util.RequestDumper;
  * macros may change depending on the processing state of it might be still
  * necessary to subscribe to the {@link Type#MACRO} notification (use the 
  * {@link RequestDumper} to find out). NOTE: You may also add your own key,value
- * pairs to the map to "communicate" with other MailFilters managed by the sae
+ * pairs to the map to "communicate" with other MailFilters managed by the same
  * milter4j server, but always make sure, that you never overwrite the macros, 
  * sent by the MTA!
  * <p>
@@ -98,9 +98,11 @@ import de.ovgu.cs.milter4j.util.RequestDumper;
  * 			the MTA (most do not)</li>
  * 		<li>{@link de.ovgu.cs.milter4j.reply.Type#SKIP} if returned by 
  * 			{@link #doBody(byte[], HashMap)}, supported by the MTA and no other 
- * 			managed filter needs further body chunks. Anyway, the managing 
- * 			server makes sure, that the filter, which sent that packet, will 
- * 			not receive any further body chunks.</li>
+ * 			managed filter needs further body chunks. However, no matter, whether
+ * 			the mail server supports skipping, the managing milter4j worker 
+ * 			makes sure, that the filter, which sent that packet, will 
+ * 			not receive any further body chunks (thus implicitly SKIP is always
+ * 			supported from the filter's point of view).</li>
  * </ul>
  * The following commands are reserved for use by the managing server and thus
  * are ignored.
@@ -378,7 +380,15 @@ public abstract class MailFilter {
 	 * <p>
 	 * Type: message-oriented
 	 * 
-	 * @param from		'MAIL FROM:' values sent by the mail-client
+	 * @param from		'MAIL FROM:' values sent by the mail-client. Element 0
+	 * 		always contains the sender address, whih might be in angle brackets 
+	 * 		(&lt;address&gt;), whereby the address itself might be an empty 
+	 * 		string and thus element 0 would be '&lt;&gt;'. The other elements
+	 * 		(if any) are at least wrt. sendmail ESMTP key=value pairs (SIZE,
+	 * 		BODY, ENVID, RET, AUTH, BY). If you wanna use the normalized address
+	 *		always without any brackets, use
+	 *		<code>allMacros.get("{mail_addr}")</code> (at least sendmail submits
+	 *		it to the worker right before sending the 'MAIL From:' data.
 	 * @param allMacros	all macros already sent by the MTA for the current 
 	 * 		connection and message. 
 	 * @return the answer to this packet. Per default a new {@link ContinuePacket}
