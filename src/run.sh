@@ -3,17 +3,28 @@
 JAVA_HOME=${JAVA_HOME:-/local/apps/jdk}
 
 # additional flags for the java virtual machine
-JVM_FLAGS="-Djava.awt.headless=true"
+JVM_FLAGS="-Djava.awt.headless=true -server"
 
 if [ "$1" != "shutdown" ]; then
-	# enable JMX tools to get information about the server and its stats frome remote
+	# Enable JMX to retrieve server information and statistics on demand
+	#	JMX clients connect to this TCP port to access the RMI registry
 	JVM_FLAGS="$JVM_FLAGS -Dcom.sun.management.jmxremote.port=12345"
-	# if one has no firewalls, dedicated connection machines one would probably
-	# inverse these settings
+	#	TCP port used for JMX RMI client connections. If not set, a random
+	#	port is selected as needed, which can be difficult to handle properly
+	#	with firewalls.
+	#JVM_FLAGS="$JVM_FLAGS -Dcom.sun.management.jmxremote.rmi.port=12346"
+	#	Force JMX clients to use this IP or hostname/FQDN
+	#JVM_FLAGS="$JVM_FLAGS -Djava.rmi.server.hostname=127.0.0.1"
+	#	If a firewall is in place which allows only trusted clients within the
+	#	local network to connect, no authentication and no traffic encryption is
+	#	probably ok. If in doubts, inverse these settings.
 	JVM_FLAGS="$JVM_FLAGS -Dcom.sun.management.jmxremote.authenticate=false"
 	JVM_FLAGS="$JVM_FLAGS -Dcom.sun.management.jmxremote.ssl=false"
+	#	No dynamic class loading from remote codebases (security best practice).
+	JVM_FLAGS="$JVM_FLAGS -Djava.rmi.server.useCodebaseOnly=true"
+	#	For additional options, consult the JMX documentation or ask ChatGPT.
 	
-	# just in case, somebody wants to attach a debugger from remote
+	# Just in case someone wants to attach a remote debugger:
 	#JAVA_OPTS="-agentlib:jdwp=transport=dt_socket,address=45678,server=y,suspend=n"
 fi
 
