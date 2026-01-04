@@ -2,9 +2,7 @@
 <classpath>
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
-	<classpathentry kind="con" path="org.eclipse.jdt.USER_LIBRARY/Logback-debug"/>
-	<classpathentry kind="con" path="org.eclipse.jdt.USER_LIBRARY/SLF4J-API-debug"/>
 	<classpathentry kind="lib" path="lib/mail.jar" sourcepath="/javamail/src/java"/>
-	<classpathentry kind="lib" path="/local/apps/jdk1.6/lib/jconsole.jar"/>
+	<classpathentry kind="lib" path="lib/slf4j-api-1.4.3.jar"/>
 	<classpathentry kind="output" path="build/classes"/>
 </classpath>
