@@ -13,9 +13,9 @@ package de.ovgu.cs.milter4j;
  * An annotated collection of known sendmail macros (OP: is actually the text 
  * found in the "sendmail Install and Operation Guide" version 8.14.2).
  * <p>
- * NOTE: <em>Unstable class</p>, i.e. this list might not be accurate wrt. 
+ * NOTE: <em>Unstable class</em>, i.e. this list might not be accurate wrt.
  * the sendmail version in use and may even miss macro names.
- * <p>
+ *
  * @see   "sendmail Operation Guide, section 5.2"
  * 
  * @author 	Jens Elkner
@@ -232,7 +232,7 @@ public enum Macro {
 	 * C daemon: listening port */
 	DAEMON_PORT,
 	/**
-	 * OP: Holds the result of the resolve call for <ocde>${client_name}</code>. 
+	 * OP: Holds the result of the resolve call for <code>${client_name}</code>.
 	 * Possible values are:
 	 * <pre>
 	 * 		<code>OK</code>     resolved successfully
@@ -578,9 +578,9 @@ public enum Macro {
 	 * <code>$?x$x &lt;$g&gt;$|$g$.</code> or <code>$g$?x ($x)$.</code>, 
 	 * corresponding to the following two formats:
 	 * <pre>
-	 * Eric Allman <eric@CS.Berkeley.EDU>
+	 * Eric Allman &lt;eric@CS.Berkeley.EDU&gt;
 	 * eric@CS.Berkeley.EDU (Eric Allman)
-	 * <p>
+	 * </pre>
 	 * Sendmail properly quotes names that have special characters if the first 
 	 * form is used.
 	 */

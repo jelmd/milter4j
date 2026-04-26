@@ -56,7 +56,7 @@ import de.ovgu.cs.milter4j.util.Misc;
  * The interface, where the filter manager should bind to. If it is ommited or 
  * is "<code>*</code>", the server binds to all interfaces of the host. 
  * Otherwise it binds to the given interface, only.
- * <dd>
+ * </dd>
  * <dt>shutdown</dt>
  * <dd>The port, on which the filter manager should listen for shutdown commands.
  * It will always bind to the {@code localhost} interface. If ommitted, it will
@@ -72,7 +72,7 @@ import de.ovgu.cs.milter4j.util.Misc;
  * If enabled and the milter receives the "End Of Body" cmd, the milter adds a 
  * "X-Milter" header to the mail with the value of the current version of the 
  * milter4j framework. Default is {@code true}.
- * <dd>
+ * </dd>
  * <dt>addrcpt</dt>
  * <dd>
  * If enabled and the milter receives the "End Of Body" cmd, the milter adds a 

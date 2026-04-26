@@ -77,9 +77,9 @@ public interface FutureTaskExecutorMXBean {
 
 	/**
 	 * Returns true if this executor is in the process of terminating after
-	 * <tt>shutdown</tt> or <tt>shutdownNow</tt> but has not completely
+	 * <code>shutdown</code> or <code>shutdownNow</code> but has not completely
 	 * terminated. This method may be useful for debugging. A return of
-	 * <tt>true</tt> reported a sufficient period after shutdown may indicate
+	 * <code>true</code> reported a sufficient period after shutdown may indicate
 	 * that submitted tasks have ignored or suppressed interruption, causing
 	 * this executor not to properly terminate.
 	 * 

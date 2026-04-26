@@ -19,8 +19,6 @@ import de.ovgu.cs.milter4j.util.Misc;
  * Directly set the SMTP error reply code. Only 4XX and 5XX replies are accepted.
  * This code will be used on subsequent error replies resulting from actions 
  * taken by this filter.
- * <p>
- * 
  * 
  * @author 	Jens Elkner
  * @version	$Revision$

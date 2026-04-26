@@ -48,7 +48,7 @@ import de.ovgu.cs.milter4j.util.RequestDumper;
  * <pre>
  *	Worker worker = getFreeWorker();
  *	worker.handle(connection) {
- * 		List<MailFilter> filters = getFilters();
+ * 		List&lt;MailFilter&gt; filters = getFilters();
  *		while (command != QUIT) {
  *			command = con.getCommand();
  *			preprocess(command);
