@@ -571,9 +571,13 @@ public class Server extends Thread
 				}
 			}
 		} else {
-			Server s = new Server(config);
-	//		s.setDaemon(true);
-			s.start();
+			try {
+				Server s = new Server(config);
+		//		s.setDaemon(true);
+				s.start();
+			} catch (RuntimeException e) {
+				System.err.println("Error: " + e.getMessage());
+			}
 		}
 	}
 

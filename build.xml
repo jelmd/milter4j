@@ -11,7 +11,7 @@
 	<!-- new features, but backward compatible -->
 	<property name="version.minor" value="1"/>
 	<!-- developer built or maintainance relase or bug fix number -->
-	<property name="version.tiny"  value="4"/>
+	<property name="version.tiny"  value="5"/>
 	<!-- status: alpha | beta | gamma | final | "" ; "" means final -->
 	<property name="version.note"  value=""/>
 
@@ -118,11 +118,10 @@
 		<tstamp>
 			<format property="year.end" pattern="yyyy" />
 		</tstamp>
-		<exec executable="svnversion" output="${build.dir}/buildnumber">
-			<arg line="-n ${basedir}"/>
+		<exec executable="git" output="${build.dir}/buildnumber">
+			<arg line="rev-parse --short HEAD"/>
 			<redirector>
 				<outputfilterchain>
-					<replaceregex pattern="^.*:" replace=""/>
 					<replaceregex pattern="^" replace="build.number="/>
 				</outputfilterchain>
 			</redirector>

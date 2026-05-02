@@ -65,6 +65,7 @@ USAGE="[-?${VERSION}"' ]
 [c:config]:[file?Start or stop the server with the given configuration file.]
 [k:kill?Shutdown the running server and exit. It uses the values from the related configuration to connect to the daemon and send it the signal to shutdown.]
 [L:log]:[file?Use the given \afile\a for logging configuration. Must be a logback XML configuration file.]
+[v:version?Print the current version and exit.]
 \n\n[\ashutdown\a]
 '
 
@@ -80,6 +81,7 @@ while getopts "${USAGE}" OPT ; do
 		# add your own filters like this
 		#e) START_CLASS=de.ovgu.cs.jelmilter.HeloCheck IS_START_STOP=0 ;;
 		L) JVM_FLAGS+=( "-Dlogback.config-file=${OPTARG}" ) ;;
+		v) START_CLASS='de.ovgu.cs.milter4j.Version' IS_START_STOP=0 ;;
 	esac
 done
 X=$((OPTIND-1))

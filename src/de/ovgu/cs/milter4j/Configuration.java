@@ -20,6 +20,7 @@ import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.TreeSet;
+import java.nio.file.FileSystemNotFoundException;
 
 import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamException;
@@ -163,7 +164,9 @@ public class Configuration {
 	public Configuration(String configFile) {
 		shutdownPort = DEFAULT_SHUTDOWN_PORT;
 		conf = new File(configFile == null ? DEFAULT_CONFIG : configFile);
-		reconfigure();
+		if (! reconfigure()) {
+			throw new FileSystemNotFoundException("Config file '" + conf.getAbsolutePath() + "' not readable.");
+		};
 	}
 	
 	/**
