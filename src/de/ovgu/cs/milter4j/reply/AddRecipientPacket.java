@@ -48,7 +48,7 @@ public class AddRecipientPacket
 	 * 		$ESMTP-NAME=$VALUE pair (see RFC 1869, section 6.).
 	 * @throws IllegalArgumentException if recipient and/or args is 
 	 * 		<code>null</code>
-	 * @see javax.mail.internet.MimeUtility#encodeText(String, String, String)
+	 * @see jakarta.mail.internet.MimeUtility#encodeText(String, String, String)
 	 * @see <a href="http://www.rfc-editor.org/rfc/rfc1869.txt">RFC 1869</a>
 	 * @see <a href="http://email.about.com/library/weekly/aa082597.htm">RCPT ESMTP args</a>
 	 */

@@ -33,7 +33,7 @@ public class DeleteRecipientPacket
 	 * 	addresses to be removed must match exactly. For example, an address and 
 	 * 	its expanded form do not match.
 	 * @throws IllegalArgumentException if recipient is <code>null</code>
-	 * @see javax.mail.internet.MimeUtility#encodeText(String, String, String)
+	 * @see jakarta.mail.internet.MimeUtility#encodeText(String, String, String)
 	 */
 	public DeleteRecipientPacket(String recipient) {
 		super(Type.DELRCPT);

@@ -26,7 +26,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 
-import javax.mail.Header;
+import jakarta.mail.Header;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

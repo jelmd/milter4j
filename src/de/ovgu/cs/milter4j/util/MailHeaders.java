@@ -12,8 +12,8 @@ package de.ovgu.cs.milter4j.util;
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.mail.Header;
-import javax.mail.internet.InternetHeaders;
+import jakarta.mail.Header;
+import jakarta.mail.internet.InternetHeaders;
 
 /**
  * A wrapper around {@link InternetHeaders}, which allows us to add the headers

@@ -60,7 +60,7 @@ public class AddHeaderPacket
 	 * 		it is automatically set to an empty String.
 	 * @throws IllegalArgumentException if the name parameter is <code>null</code>
 	 * 		or an empty string
-	 * @see javax.mail.internet.MimeUtility#encodeText(String, String, String)
+	 * @see jakarta.mail.internet.MimeUtility#encodeText(String, String, String)
 	 */
 	public AddHeaderPacket(String name, String value) {
 		super(Type.ADDHEADER);

@@ -31,7 +31,7 @@ public class QuarantinePacket
 	 * Create the packet.
 	 * @param reason	The mail-safe quarantine reason.
 	 * @throws IllegalArgumentException if reason is <code>null</code> or empty
-	 * @see javax.mail.internet.MimeUtility#encodeText(String, String, String)
+	 * @see jakarta.mail.internet.MimeUtility#encodeText(String, String, String)
 	 */
 	public QuarantinePacket(String reason) {
 		super(Type.QUARANTINE);

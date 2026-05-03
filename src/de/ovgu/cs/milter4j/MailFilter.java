@@ -14,8 +14,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
 
-import javax.mail.Header;
-import javax.mail.internet.MimeMultipart;
+import jakarta.mail.Header;
+import jakarta.mail.internet.MimeMultipart;
 
 import de.ovgu.cs.milter4j.cmd.Type;
 import de.ovgu.cs.milter4j.reply.ContinuePacket;

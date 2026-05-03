@@ -41,7 +41,7 @@ public class ChangeHeaderPacket
 	 * @param name The mail-safe header name.
 	 * @param value The new mail-safe value of the given header. <code>null</code>
 	 * 		implies that the header should be deleted.
-	 * @see javax.mail.internet.MimeUtility#encodeText(String, String, String)
+	 * @see jakarta.mail.internet.MimeUtility#encodeText(String, String, String)
 	 */
 	public ChangeHeaderPacket(int ordinal, String name, String value) {
 		super(Type.CHGHEADER);

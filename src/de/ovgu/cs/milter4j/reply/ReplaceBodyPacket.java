@@ -36,8 +36,8 @@ public class ReplaceBodyPacket
 	 * Create a new packet.
 	 * @param data	mail-safe body content. Should be encoded according to 
 	 * 		RFC 822/RFC 2047.
-	 * @see javax.mail.internet.MimeUtility#encodeText(String, String, String)
-	 * @see javax.mail.internet.MimeBodyPart
+	 * @see jakarta.mail.internet.MimeUtility#encodeText(String, String, String)
+	 * @see jakarta.mail.internet.MimeBodyPart
 	 * @see de.ovgu.cs.milter4j.util.Misc#getBytes(String)
 	 */
 	public ReplaceBodyPacket(byte[] data) {

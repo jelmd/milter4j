@@ -19,8 +19,8 @@ import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
 
-import javax.mail.Header;
-import javax.mail.MessagingException;
+import jakarta.mail.Header;
+import jakarta.mail.MessagingException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

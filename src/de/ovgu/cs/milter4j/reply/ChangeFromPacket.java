@@ -47,7 +47,7 @@ public class ChangeFromPacket
 	 * @param sender	mail-safe sender to set for the current message.
 	 * @param args 		mail-safe ESMTP arguments to set. Each String denotes one 
 	 * 		$ESMTP-NAME=$VALUE pair.
-	 * @see javax.mail.internet.MimeUtility#encodeText(String, String, String)
+	 * @see jakarta.mail.internet.MimeUtility#encodeText(String, String, String)
 	 */
 	public ChangeFromPacket(String sender, String[] args) {
 		super(Type.CHGFROM);

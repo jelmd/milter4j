@@ -68,7 +68,7 @@ public class InsertHeaderPacket
 	 * @param name	The mail-safe header name.
 	 * @throws IllegalArgumentException if the name parameter is <code>null</code>
 	 * 		or an empty string of if the idx is &lt; 0
-	 * @see javax.mail.internet.MimeUtility#encodeText(String, String, String)
+	 * @see jakarta.mail.internet.MimeUtility#encodeText(String, String, String)
 	 */
 	public InsertHeaderPacket(int idx, String name) {
 		this(idx, name, null);
@@ -86,7 +86,7 @@ public class InsertHeaderPacket
 	 * 		automatically set to an empty String.
 	 * @throws IllegalArgumentException if the name parameter is <code>null</code>
 	 * 		or an empty string of if the idx is &lt; 0
-	 * @see javax.mail.internet.MimeUtility#encodeText(String, String, String)
+	 * @see jakarta.mail.internet.MimeUtility#encodeText(String, String, String)
 	 */
 	public InsertHeaderPacket(int idx, String name, String value) {
 		super(Type.INSHEADER);
