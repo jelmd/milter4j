@@ -50,7 +50,7 @@ public class SetSymlistPacket
 			throw new IllegalArgumentException("stage and macro cannot be null");
 		}
 		this.stage = stage;
-		ArrayList<String> l = new ArrayList<String>(5);
+		ArrayList<String> l = new ArrayList<>(5);
 		for (String m : macro) {
 			if (m != null) {
 				String tmp = m.trim();

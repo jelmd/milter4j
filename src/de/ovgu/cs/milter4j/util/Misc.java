@@ -123,6 +123,7 @@ public class Misc {
 	 *             if path does not exist or is not readable or the is not in
 	 *             gzipped format when gzip option is set.
 	 */
+	@SuppressWarnings("resource")
 	public static StreamSource getInputSourceByFile(File path, boolean gzip)
 		throws IOException
 	{
@@ -137,7 +138,7 @@ public class Misc {
 			if (is != null) {
 				try {
 					is.close();
-				} catch (Exception x) {
+				} catch (@SuppressWarnings("unused") Exception x) {
 					/** ignore */
 				}
 			}

@@ -45,7 +45,7 @@ public class ReplyPacket
 			for (int i=0; i < 3; i++) {
 				res[i] = Integer.parseInt(tmp[i], 10);
 			}
-		} catch (Exception e) {
+		} catch (@SuppressWarnings("unused") Exception e) {
 			return null;
 		}
 		int x = reply / 100;
@@ -83,7 +83,7 @@ public class ReplyPacket
 			}
 		}
 		if (messages != null) {
-			ArrayList<String> l = new ArrayList<String>(32);
+			ArrayList<String> l = new ArrayList<>(32);
 			for (int i=0; i < messages.length && i < MAX_MSGS; i++) {
 				String tmp = messages[i];
 				if (tmp != null) {

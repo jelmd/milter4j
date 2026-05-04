@@ -65,8 +65,7 @@ public class Mail
 			return content;
 		}
 		ByteArrayOutputStream bos = null;
-		try {
-			InputStream is = getContentStream();
+		try (InputStream is = getContentStream()) {
 			bos = new ByteArrayOutputStream();
 			byte[] dst = new byte[4096]; 
 			int count = 0;

@@ -141,10 +141,10 @@ public class RequestDumper
 	 * {@inheritDoc}
 	 */
 	@Override
-	public Packet doHeader(String name, String value, 
+	public Packet doHeader(String hname, String value, 
 		HashMap<String,String> macros) 
 	{
-		log.info("doHeader:" + eol + name + ": " + value);
+		log.info("doHeader:" + eol + hname + ": " + value);
 		return new ContinuePacket();
 	}
 	

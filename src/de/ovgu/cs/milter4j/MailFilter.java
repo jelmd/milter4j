@@ -160,6 +160,7 @@ public abstract class MailFilter {
 	 * @return <code>null</code> (default) or an empty set, if it is just an 
 	 * 		observer, all possible actions otherwise.
 	 */
+	@SuppressWarnings("static-method")
 	public EnumSet<Modification> getModifications() {
 		return null;
 	}
@@ -183,6 +184,7 @@ public abstract class MailFilter {
 	 * @return a set of commands (default: all available commands). Might be 
 	 * 		<code>null</code>, if the instance is misconfigured, etc.
 	 */
+	@SuppressWarnings("static-method")
 	public EnumSet<Type> getCommands() {
 		return EnumSet.allOf(Type.class);
 	}
@@ -202,6 +204,7 @@ public abstract class MailFilter {
 	 * 		the list of macro names otherwise. E.g. 
 	 * 		"{rcpt_mailer}", "{rcpt_host}", ...
 	 */
+	@SuppressWarnings("static-method")
 	public Set<String> getRequiredMacros(MacroStage stage) {
 		return null;
 	}
@@ -213,6 +216,7 @@ public abstract class MailFilter {
 	 * 		sent rejected recipients.
 	 * @see Option#RCPT_REJ
 	 */
+	@SuppressWarnings("static-method")
 	public boolean wantsRejectedRecipients() {
 		return false;
 	}
@@ -233,6 +237,7 @@ public abstract class MailFilter {
 	 * @return	if <code>true</code> managing server reassembles the mail by
 	 * 	collecting all data packets.
 	 */
+	@SuppressWarnings("static-method")
 	public boolean reassembleMail() {
 		return false;
 	}
@@ -289,6 +294,7 @@ public abstract class MailFilter {
 	 * @see  Type#getCmd()
 	 * @see  "sendmail Operation Guide, section 5.2"
 	 */
+	@SuppressWarnings("static-method")
 	public void doMacros(HashMap<String,String> allMacros, 
 		HashMap<String,String> newMacros) 
 	{
@@ -306,6 +312,7 @@ public abstract class MailFilter {
 	 * 
 	 * @return the answer to send back to the MTA.
 	 */
+	@SuppressWarnings("static-method")
 	public Packet doData(HashMap<String,String> allMacros) {
 		return new ContinuePacket();
 	}
@@ -320,13 +327,14 @@ public abstract class MailFilter {
 	 * <p>
 	 * Type: message-oriented
 	 * 
-	 * @param name	the header name
+	 * @param hname	the header name
 	 * @param value	the value of the header field (might be an empty String)
 	 * @param allMacros	all macros already sent by the MTA for the current 
 	 * 		connection and message. 
 	 * @return the answer to send back to the MTA.
 	 */
-	public Packet doHeader(String name, String value, 
+	@SuppressWarnings("static-method")
+	public Packet doHeader(String hname, String value, 
 		HashMap<String,String> allMacros) 
 	{
 		return new ContinuePacket();
@@ -350,6 +358,7 @@ public abstract class MailFilter {
 	 * 
 	 * @return the answer to this packet. Per default a new {@link ContinuePacket}
 	 */
+	@SuppressWarnings("static-method")
 	public Packet doConnect(String hostname, AddressFamily family, int port, 
 		String info, HashMap<String,String> allMacros) 
 	{
@@ -369,6 +378,7 @@ public abstract class MailFilter {
 	 * 		connection and message. 
 	 * @return the answer to this packet. Per default a new {@link ContinuePacket}
 	 */
+	@SuppressWarnings("static-method")
 	public Packet doHelo(String domain, HashMap<String,String> allMacros) {
 		return new ContinuePacket();
 	}
@@ -393,6 +403,7 @@ public abstract class MailFilter {
 	 * 		connection and message. 
 	 * @return the answer to this packet. Per default a new {@link ContinuePacket}
 	 */
+	@SuppressWarnings("static-method")
 	public Packet doMailFrom(String[] from, HashMap<String,String> allMacros) {
 		return new ContinuePacket();
 	}
@@ -409,6 +420,7 @@ public abstract class MailFilter {
 	 * 		connection and message. 
 	 * @return the answer to this packet. Per default a new {@link ContinuePacket}
 	 */
+	@SuppressWarnings("static-method")
 	public Packet doRecipientTo(String[] recipient, 
 		HashMap<String,String> allMacros) 
 	{
@@ -438,6 +450,7 @@ public abstract class MailFilter {
 	 * 		connection and message. 
 	 * @return the answer to this packet. Per default a new {@link ContinuePacket}
 	 */
+	@SuppressWarnings("static-method")
 	public Packet doBody(byte[] chunk, HashMap<String,String> allMacros) {
 		return new ContinuePacket();
 	}
@@ -459,6 +472,7 @@ public abstract class MailFilter {
 	 * 
 	 * @return the answer to this packet. Per default a new {@link ContinuePacket}
 	 */
+	@SuppressWarnings("static-method")
 	public Packet doEndOfHeader(List<Header> headers, 
 		HashMap<String,String> allMacros) 
 	{
@@ -497,6 +511,7 @@ public abstract class MailFilter {
 	 * @return a list of answers to this packet. Per default <code>null</code>.
 	 * @see MimeMultipart
 	 */
+	@SuppressWarnings("static-method")
 	public List<Packet> doEndOfMail(List<Header> headers, 
 		HashMap<String,String> allMacros, Mail message) 
 	{
@@ -516,6 +531,7 @@ public abstract class MailFilter {
 	 * 		connection and message. 
 	 * @return the answer to this packet. Per default a new {@link ContinuePacket}
 	 */
+	@SuppressWarnings("static-method")
 	public Packet doBadCommand(String cmd, HashMap<String,String> allMacros) {
 		return new ContinuePacket();
 	}

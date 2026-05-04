@@ -31,7 +31,7 @@ public class MailFromPacket
 	 */
 	public MailFromPacket(ByteBuffer data) {
 		super(Type.MAIL);
-		ArrayList<String> args = new ArrayList<String>();
+		ArrayList<String> args = new ArrayList<>();
 		StringBuilder name = new StringBuilder(32);
 		while (data.hasRemaining()) {
 			name.setLength(0);

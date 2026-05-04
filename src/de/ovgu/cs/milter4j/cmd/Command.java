@@ -48,6 +48,7 @@ public class Command {
 	 * @return if <var>dst</var> is <code>null</code>, a new allocated 
 	 * 		StringBuilder, <var>dst</var> otherwise
 	 */
+	@SuppressWarnings("static-method")
 	protected StringBuilder getString(StringBuilder dst, ByteBuffer data) {
 		byte b;
 		if (dst == null) {

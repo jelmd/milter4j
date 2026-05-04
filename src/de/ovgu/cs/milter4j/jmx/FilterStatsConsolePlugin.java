@@ -71,7 +71,7 @@ public class FilterStatsConsolePlugin
 			jstats.setMBeanServerConnection(getContext()
 				.getMBeanServerConnection());
 			// want a predictable order of the tabs to be added in JConsole
-			tabs = new LinkedHashMap<String, JPanel>();
+			tabs = new LinkedHashMap<>();
 			tabs.put("Mail Filter", jstats);
 		}
 		return tabs;

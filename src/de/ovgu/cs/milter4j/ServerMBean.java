@@ -13,9 +13,6 @@ import java.util.Date;
 
 import javax.management.openmbean.TabularData;
 
-import de.ovgu.cs.milter4j.StatsCollector;
-
-
 
 /**
  * @author 	Jens Elkner

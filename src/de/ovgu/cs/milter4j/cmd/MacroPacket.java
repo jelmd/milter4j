@@ -31,7 +31,7 @@ public class MacroPacket
 	 */
 	public MacroPacket(ByteBuffer data) {
 		super(Type.MACRO);
-		macros = new HashMap<String, String>();
+		macros = new HashMap<>();
 		if (!data.hasRemaining()) {
 			return;
 		}

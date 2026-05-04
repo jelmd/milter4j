@@ -164,7 +164,6 @@
 			optimize="${optimize}" debug="${debug}" debuglevel="${debuglevel}" 
 			deprecation="${deprecation}" classpathref="classpath.extensions"
 			encoding="${compile.encoding}"
-			source="1.8" target="1.8"
 			listfiles="${listfiles}">
 			<compilerarg value="-Xlint:unchecked" compiler="javac1.7" />
 		</javac>
@@ -177,7 +176,6 @@
 			optimize="${optimize}" debug="${debug}" debuglevel="${debuglevel}"
 			deprecation="${deprecation}" classpathref="classpath.extensions"
 			encoding="${compile.encoding}" listfiles="false"
-			source="1.8" target="1.8"
 			includeantruntime="false"
 		>
 			<compilerarg value="-Xlint:unchecked" compiler="javac1.7" />
@@ -191,7 +189,6 @@
 			optimize="${optimize}" debug="${debug}" debuglevel="${debuglevel}"
 			deprecation="${deprecation}" classpathref="junit.classpath"
 			encoding="${compile.encoding}" listfiles="false"
-			source="1.8" target="1.8"
 			includeantruntime="false"
 		>
 			<compilerarg value="-Xlint:unchecked" compiler="javac1.7" />
@@ -232,7 +229,6 @@
 			bottom="${bottom}"
 			sourcepath="${src.dir}"
 			maxmemory="512m"
-			source="1.8"
 		>
 			<classpath>
 				<pathelement path="${build.class.dir}" />

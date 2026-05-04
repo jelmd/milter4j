@@ -11,7 +11,7 @@ package de.ovgu.cs.milter4j;
 
 /**
  * An annotated collection of known sendmail macros (OP: is actually the text 
- * found in the "sendmail Install and Operation Guide" version 8.14.2).
+ * found in the "sendmail Install and Operation Guide" version 8.18.2).
  * <p>
  * NOTE: <em>Unstable class</em>, i.e. this list might not be accurate wrt.
  * the sendmail version in use and may even miss macro names.
@@ -48,6 +48,17 @@ public enum Macro {
 	 * envelope,srvrsmtp: SASL */
 	AUTH_SSF,
 	/**
+	 * OP:  The fingerprint of the presented certificate (STARTTLS only).
+	 * Note: this macro is only defined if the option
+	 * <b>CertFingerprintAlgorithm</b> is set, in which case the specified
+	 * fingerprint algorithm is used. The valid algorithms depend on the
+	 * OpenSSL version, but usually md5, sha1, and sha256 are available. See
+	 * <code>openssl dgst -h</code>.
+	 * <p>
+	 * tls: START_TLS
+	 */
+	CERT_FP,
+	/**
 	 * OP:  The DN (distinguished name) of the CA (certificate authority) that 
 	 * signed the presented certificate (the cert issuer) (STARTTLS only).
 	 * <p>
@@ -61,6 +72,8 @@ public enum Macro {
 	CERT_SUBJECT,
 	/**
 	 * OP:  The MD5 hash of the presented certificate (STARTTLS only).
+	 * Note: this macro is only defined if the option
+	 * <b>CertFingerprintAlgorithm</b> is not set.
 	 * <p>
 	 * envelope,tls: START_TLS */
 	CERT_MD5,
@@ -78,23 +91,31 @@ public enum Macro {
 	 * envelope,tls: START_TLS */
 	CIPHER,
 	/**
-	 * OP:  The TLS/SSL version used for the connection, e.g., TLSv1, SSLv3, 
-	 * SSLv2; defined after <code>STARTTLS</code> has been used.
+	 * OP:  The TLS/SSL version used for the connection, e.g., TLSv1.2, TLSv1;
+	 * defined after <code>STARTTLS</code> has been used.
 	 * <p>
 	 * envelope,tls: START_TLS */
 	TLS_VERSION,
 	/**
 	 * OP: The result of the verification of the presented cert; only defined 
-	 * after <code>STARTTLS</code> has been used. Possible values are:
+	 * after <code>STARTTLS</code> has been used (or attempted).
+	 * Possible values are:
 	 * <pre>
+	 * 		<code>TRUSTED</code>    verification via DANE succeeded.
+	 * 		<code>DANE_FAIL</code>  verification via DANE failed.
+	 * 		<code>DANE_TEMP</code>  verification via DANE failed temporarily.
+	 * 		<code>DANE_NOTLS</code> DANE required but STARTTLS was not available.
 	 * 		<code>OK</code>        verification succeeded.
 	 * 		<code>NO</code>        nocert presented.
 	 * 		<code>NOT</code>       no cert requested.
 	 * 		<code>FAIL</code>      cert presented but could not be verified, 
 	 *                    e.g., the signing CA is missing.
 	 * 		<code>NONE</code>      STARTTLS has not been performed.
+	 * 		<code>CLEAR</code>     STARTTLS has been disabled internally
+	 *                    for a clear text delivery attempt.
 	 * 		<code>TEMP</code>      temporary error occurred.
-	 * 		<code>PROTOCOL</code>  some protocol error occurred.
+	 * 		<code>PROTOCOL</code>  some protocol error occurred at the ESMTP level (not TLS).
+	 * 		<code>CONFIG</code>    tls_*_features failed due to a syntax error.
 	 * 		<code>SOFTWARE</code>  STARTTLS handshake failed, which is a fatal 
 	 *                    error for this session, the e-mail will be queued.
 	 * </pre>
@@ -119,11 +140,20 @@ public enum Macro {
 	/**
 	 * OP: The CN (common name) of the CA that signed the presented certificate 
 	 * (STARTTLS only).
+	 * Note: if the CN cannot be extracted properly it will be replaced by one
+	 * of these strings based on the encountered error:
+	 * <dl>
+	 * <dt>BadCertificateContainsNUL</dt><dd>CN contains a NUL character</dd>
+	 * <dt>BadCertificateTooLong</dt><dd>CN is too long</dd>
+	 * <dt>BadCertificateUnknown</dt><dd>CN could not be extracted</dd>
+	 * </dl>
+	 * In the last case, some other (unspecific) error occurred.
 	 * <p>
 	 * envelope: _FFR_TLS_1 */
 	CN_ISSUER,
 	/**
 	 * OP:  The CN (common name) of the presented certificate (STARTTLS only).
+	 * See <code>${cert_issuer}</code> for possible replacements.
 	 * <p>
 	 * envelope,tls: _FFR_TLS_1 */
 	CN_SUBJECT,
@@ -297,7 +327,7 @@ public enum Macro {
 	 * C daemon: socket factory of the outgoing interface */
 	IF_FAMILY_OUT,
 	/**
-	 * OP:  The name of the interface of an outgoing connection.
+	 * OP:  The hostname associated with the interface of an outgoing connection.
 	 * <p>
 	 * C daemon: hostname of the outgoing interface */
 	IF_NAME_OUT,
@@ -349,7 +379,11 @@ public enum Macro {
 	 * <p>
 	 * deliver,headers,savemail: return path/sender */
 	G,
-	/** deliver,main,srvrsmtp: DSN notification ({SUCCESS,FAILURE,DELAY}|NEVER) */
+	/**
+	 * Value of <code>DSN NOTIFY=</code> parameter (never, success, failure,
+	 * delay, or empty string).
+	 * <p>
+	 * deliver,main,srvrsmtp: DSN notification ({SUCCESS,FAILURE,DELAY}|NEVER) */
 	DSN_NOTIFY,
 	/**
 	 * OP:  The name of the server of the current outgoing SMTP or LMTP 
@@ -359,7 +393,8 @@ public enum Macro {
 	SERVER_NAME,
 	/**
 	 * OP:  The address of the server of the current outgoing SMTP connection. 
-	 * For LMTP delivery the macro is set to the name of the mailer.
+	 * For LMTP delivery the macro is set to the name of the mailer (only if
+	 * sendmail is compiled with STARTTLS or SASL).
 	 * <p>
 	 * deliver: server's addr */
 	SERVER_ADDR,
@@ -448,13 +483,17 @@ public enum Macro {
 	R,
 	/** main,queue,srvrsmtp: what to return */
 	DSN_RET,
-	/** main,queue,srvrsmtp: set "original" envelope id [from ESMTP] */
+	/**
+	 * OP: The envelope id parameter (<code>ENVID=</code>) passed to sendmail
+	 * as part of the envelope.
+	 * <p>
+	 * main,queue,srvrsmtp: set "original" envelope id [from ESMTP] */
 	DSN_ENVID,
 	/**
-	 * OP:  The validated sender address. See also <code>${client_resolve}</code>.
+	 * OP:  The validated sender host name ($_). See also <code>${client_resolve}</code>.
 	 * <p>
 	 * main,savemail: authinfo */
-	_,
+	CLIENT_NAME_VALIDATED,
 	/**
 	 * OP:  Some information about a daemon as a text string. For example, 
 	 * "SMTP+queueing@00:30:00".
@@ -606,6 +645,8 @@ public enum Macro {
 				return "deliveryMode";
 			case OPMODE:
 				return "opMode";
+			case CLIENT_NAME_VALIDATED:
+				return "_";
 			default:
 				return '{' + name().toLowerCase() + '}';
 		}

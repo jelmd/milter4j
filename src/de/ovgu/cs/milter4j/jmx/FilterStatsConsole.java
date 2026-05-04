@@ -45,6 +45,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
+import javax.swing.WindowConstants;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
 
@@ -77,8 +78,8 @@ public class FilterStatsConsole
 	 */
 	public FilterStatsConsole() {
 		super(new BorderLayout());
-		filterComboModel = new DefaultComboBoxModel<String>(new String[0]);
-		filterCombo = new JComboBox<String>(filterComboModel);
+		filterComboModel = new DefaultComboBoxModel<>(new String[0]);
+		filterCombo = new JComboBox<>(filterComboModel);
 		filterCombo.addItemListener(new ItemListener() {
 			@Override
 			public void itemStateChanged(ItemEvent e) {
@@ -202,7 +203,7 @@ public class FilterStatsConsole
 				CompositeType ct = tt.getRowType();
 				Set<String> headers = ct.keySet();
 				boolean allSimple = true;
-				List<String> tHeaders = new ArrayList<String>();
+				List<String> tHeaders = new ArrayList<>();
 				tHeaders.addAll(idxNames);
 				for (String name : idxNames) {
 					if (! (ct.getType(name) instanceof SimpleType<?>)) {
@@ -313,16 +314,15 @@ public class FilterStatsConsole
 	/**
 	 * Establish an RMI connection with the remote JVM
 	 * 
-	 * @param hostname
-	 *            machine to connect to
-	 * @param port
-	 *            port, at which jconsole/mbeanserver is listening
+	 * @param hostname	machine to connect to
+	 * @param port		port, at which jconsole/mbeanserver is listening
 	 */
 	private static MBeanServerConnection connect(String hostname, int port) {
 		String urlPath = "/jndi/rmi://" + hostname + ":" + port + "/jmxrmi";
 		MBeanServerConnection server = null;
 		try {
 			JMXServiceURL url = new JMXServiceURL("rmi", "", 0, urlPath);
+			@SuppressWarnings("resource")
 			JMXConnector jmxc = JMXConnectorFactory.connect(url);
 			server = jmxc.getMBeanServerConnection();
 		} catch (Exception e) {
@@ -341,7 +341,7 @@ public class FilterStatsConsole
 	 */
 	static void createAndShowGUI(JPanel panel) {
 		JFrame frame = new JFrame("FilterStatsConsole");
-		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
 		JComponent contentPane = (JComponent) frame.getContentPane();
 		contentPane.add(panel, BorderLayout.CENTER);
 		contentPane.setOpaque(true); // content panes must be opaque
@@ -368,7 +368,7 @@ public class FilterStatsConsole
 		int port = -1;
 		try {
 			port = Integer.parseInt(arg2[1]);
-		} catch (NumberFormatException x) {
+		} catch (@SuppressWarnings("unused") NumberFormatException x) {
 			usage();
 		}
 		if (port < 0) {

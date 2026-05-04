@@ -147,7 +147,7 @@ public class Configuration {
 	
 	private File conf;
 	private InetSocketAddress address;
-	private ArrayList<String> filter = new ArrayList<String>();
+	private ArrayList<String> filter = new ArrayList<>();
 	private PropertyChangeSupport pcs;
 	private int shutdownPort;
 	private int[] sampleRate;
@@ -166,7 +166,7 @@ public class Configuration {
 		conf = new File(configFile == null ? DEFAULT_CONFIG : configFile);
 		if (! reconfigure()) {
 			throw new FileSystemNotFoundException("Config file '" + conf.getAbsolutePath() + "' not readable.");
-		};
+		}
 	}
 	
 	/**
@@ -198,7 +198,7 @@ public class Configuration {
 		if (aPort != null) {
 			try {
 				port = Integer.parseInt(aPort, 10);
-			} catch (Exception e) {
+			} catch (@SuppressWarnings("unused") Exception e) {
 				// handle later
 			}
 			if (port <= 0 || port >= 0xffff) {
@@ -238,8 +238,9 @@ public class Configuration {
 	 */
 	public String listConfig() {
 		StringWriter r = new StringWriter();
-		try {
-			BufferedReader in = new BufferedReader(new FileReader(conf));
+		try (FileReader fr = new FileReader(conf);
+			BufferedReader in = new BufferedReader(fr))
+		{
 			String line = null;
 			while ((line = in.readLine()) != null) {
 				r.write(line);
@@ -279,7 +280,7 @@ public class Configuration {
 		if (reader == null) {
 			return false;
 		}
-		ArrayList<String> newfilters = new ArrayList<String>();
+		ArrayList<String> newfilters = new ArrayList<>();
 		InetSocketAddress addr = null;
 		int port = DEFAULT_SHUTDOWN_PORT;
 		boolean newDisableVersion = false;
@@ -289,7 +290,7 @@ public class Configuration {
 			String aPort = reader.getAttributeValue(null, "shutdown");
 			try {
 				port = Integer.parseInt(aPort, 10);
-			} catch (Exception e) {
+			} catch (@SuppressWarnings("unused") Exception e) {
 				port = DEFAULT_SHUTDOWN_PORT;
 			}
 			try {
@@ -298,7 +299,7 @@ public class Configuration {
 				if (samples < 1) {
 					samples = DEFAULT_SAMPLES;
 				}
-			} catch (Exception e) {
+			} catch (@SuppressWarnings("unused") Exception e) {
 				samples = DEFAULT_SAMPLES;
 			}
 			setSampleRates(reader.getAttributeValue(null, "samplerates"));
@@ -306,7 +307,7 @@ public class Configuration {
 			int workers = -1;
 			try {
 				workers = Integer.parseInt(tmp,10);
-			} catch (Exception e) {
+			} catch (@SuppressWarnings("unused") Exception e) {
 				// ignore
 			}
 			maxWorkers = workers > 0 ? workers : DEFAULT_WORKERS;
@@ -342,8 +343,10 @@ public class Configuration {
 			}
 			return false;
 		} finally {
-			try { reader.close(); } catch (Exception e) { /* ignore */ }
-			try { src.getInputStream().close(); } catch (Exception e) { 
+			try { reader.close(); }
+			catch (@SuppressWarnings("unused") Exception e) { /* ignore */ }
+			try { src.getInputStream().close(); }
+			catch (@SuppressWarnings("unused") Exception e) {
 				/* some readers do not close the underlying stream */ 
 			}
 		}
@@ -407,7 +410,7 @@ public class Configuration {
 			return;
 		}
 		String tmp[] = param.split(",");
-		TreeSet<Integer> vals = new TreeSet<Integer>();
+		TreeSet<Integer> vals = new TreeSet<>();
 		for (int i=tmp.length-1; i >= 0; i++) {
 			int factor = 1;
 			tmp[i] = tmp[i].trim().toLowerCase();
@@ -432,7 +435,7 @@ public class Configuration {
 					tmp[i] = tmp[i].substring(0, tmp[i].length()-1);
 				}
 				int val = factor * Integer.parseInt(tmp[i], 10);
-				vals.add(new Integer(val));
+				vals.add(Integer.valueOf(val));
 			} catch (Exception e) {
 				log.warn("Invalid intervall value tmp[i] ignored");
 				if (log.isDebugEnabled()) {

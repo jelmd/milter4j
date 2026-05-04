@@ -32,14 +32,14 @@ public class Version {
 	 * Get the project name of this product
 	 * @return this product's project name
 	 */
-	public String getProjectName() {
+	public static String getProjectName() {
 		return projectName;
 	}
 	/**
 	 * Get the offical name of this product
 	 * @return this product's name
 	 */
-	public String getProductName() {
+	public static String getProductName() {
 		return productName;
 	}
 
@@ -47,7 +47,7 @@ public class Version {
 	 * Get the version of this product (usually a major.minor.tiny version number)
 	 * @return this products version
 	 */
-	public String getProductVersion() {
+	public static String getProductVersion() {
 		return productVersion;
 	}
 
@@ -56,7 +56,7 @@ public class Version {
 	 * svn version).
 	 * @return a build number
 	 */
-	public String getBuildNumber() {
+	public static String getBuildNumber() {
 		return buildNumber;
 	}
 	
@@ -64,7 +64,7 @@ public class Version {
 	 * Get the year, when the development of this application started.
 	 * @return year of project start
 	 */
-	public String getFromYear() {
+	public static String getFromYear() {
 		return yearStart;
 	}
 
@@ -72,7 +72,7 @@ public class Version {
 	 * Get the year, when this application was last modified.
 	 * @return year of last modification
 	 */
-	public String getEndYear() {
+	public static String getEndYear() {
 		return yearEnd;
 	}
 
@@ -80,7 +80,7 @@ public class Version {
 	 * Get the name of the vendor
 	 * @return the vendor name
 	 */
-	public String getVendorName() {
+	public static String getVendorName() {
 		return vendorName;
 	}
 
@@ -88,7 +88,7 @@ public class Version {
 	 * Get the URL of the product vendor
 	 * @return the vendor URL
 	 */
-	public String getVendorURL() {
+	public static String getVendorURL() {
 		return vendorURL;
 	}
 
@@ -96,7 +96,7 @@ public class Version {
 	 * Get the complete version info for this application
 	 * @return multilined version info 
 	 */
-	public String getVersionInfo() {
+	public static String getVersionInfo() {
 		String eol = System.getProperty("line.separator");
 		String year = yearStart.equals(yearEnd) 
 			? yearStart
@@ -111,9 +111,9 @@ public class Version {
 	 * Get the path to the license file.
 	 * @return a hardcoded path wrt. to a jar file
 	 */
-	public String getLicensePath() {
-        return Version.class.getPackage().getName().replaceAll("\\.","/") 
-        	+ "/res/license.txt";
+	public static String getLicensePath() {
+		return Version.class.getPackage().getName().replaceAll("\\.","/")
+			+ "/res/license.txt";
 	}
 	
 	/**
@@ -122,6 +122,6 @@ public class Version {
 	 * @param args  none
 	 */
 	public static void main(String[] args) {
-		System.out.println((new Version()).getVersionInfo());
+		System.out.println(Version.getVersionInfo());
 	}
 }

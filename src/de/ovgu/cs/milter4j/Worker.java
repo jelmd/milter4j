@@ -108,13 +108,11 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 	private ByteBuffer header = ByteBuffer.allocateDirect(5);
 	private ByteBuffer data;
 	private Type packageType;
-	HashMap<String,String> allMacros = new HashMap<String,String>();
-	private HashMap<String,String> lastMacros = 
-		new HashMap<String,String>();
-	private HashMap<String,String> connectionMacros = 
-		new HashMap<String,String>();
-	ArrayList<Header> headers = new ArrayList<Header>();
-	ArrayList<Packet> toSend = new ArrayList<Packet>();
+	HashMap<String,String> allMacros = new HashMap<>();
+	private HashMap<String,String> lastMacros = new HashMap<>();
+	private HashMap<String,String> connectionMacros = new HashMap<>();
+	ArrayList<Header> headers = new ArrayList<>();
+	ArrayList<Packet> toSend = new ArrayList<>();
 	HashMap<MacroStage,HashSet<String>> macros2negotiate;
 	private ReentrantLock configLock;
 	private String version;
@@ -130,12 +128,12 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 		configLock = new ReentrantLock();
 		this.stats = stats;
 		createTime = System.currentTimeMillis();
-		acceptList = new HashSet<MailFilter>(filters.size());
-		skipList = new HashSet<MailFilter>(filters.size());
+		acceptList = new HashSet<>(filters.size());
+		skipList = new HashSet<>(filters.size());
 		name = "Mail-Worker-" + instCounter.getAndIncrement();
-		Version v = new Version();
-		version = v.getProjectName() + " - " + v.getProductName() + " " 
-			+ v.getProductVersion() + " (" + v.getBuildNumber() + ")";
+		version = Version.getProjectName() + " - " + Version.getProductName()
+			+ " " + Version.getProductVersion()
+			+ " (" + Version.getBuildNumber() + ")";
 		reconfigure(filters);
 	}
 	
@@ -184,18 +182,19 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 	
 	/**
 	 * Prepare this worker to handle MTA essages related to a single mail client
-	 * @param channel	channel to use for reading and writing (always a 
+	 * @param sc	channel to use for reading and writing (always a
 	 * 		blocking channel)
 	 */
-	public void prepare(SocketChannel channel) {
+	@SuppressWarnings("resource")
+	public void prepare(SocketChannel sc) {
 		if (this.channel != null) {
 			log.warn("Cleaning up old socket");
-			try { this.channel.close(); } catch (IOException e) { /* ignore */ }
+			try { this.channel.close(); } catch (@SuppressWarnings("unused") IOException e) { /* ignore */ }
 		}
-		this.channel = channel;
-		if (channel != null) {
+		this.channel = sc;
+		if (sc != null) {
 			try {
-				channel.socket().setSoTimeout(10*60*1000); // make sure, we get it back
+				sc.socket().setSoTimeout(10*60*1000); // make sure, we get it back
 			} catch (SocketException e) {
 				log.warn(e.getLocalizedMessage());
 				log.debug("prepare()", e);
@@ -205,21 +204,21 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 
 	/**
 	 * Re-Initialize this worker.
-	 * @param filters	list of mail filters to manage
+	 * @param filterList	list of mail filters to manage
 	 */
-	private void reconfigure(ArrayList<MailFilter> filters) {
+	private void reconfigure(ArrayList<MailFilter> filterList) {
 		configLock.lock();
 		try {
-			this.filters = filters;
+			this.filters = filterList;
 			this.filters.trimToSize();
 			cmds2handle = EnumSet.noneOf(Type.class);
 			mods2handle = EnumSet.of(Modification.ADDHDRS);
 			mtaShouldSentRejected = false;
-			assembleMessage4 = new HashSet<MailFilter>();
-			macros2negotiate = new HashMap<MacroStage, HashSet<String>>(7);
+			assembleMessage4 = new HashSet<>();
+			macros2negotiate = new HashMap<>(7);
 			MacroStage[] stages = MacroStage.values();
 			for (int i=stages.length-1; i >= 0; i--) {
-				macros2negotiate.put(stages[i], new HashSet<String>());
+				macros2negotiate.put(stages[i], new HashSet<>());
 			}
 			for (MailFilter f : filters) {
 				EnumSet<Type> t = f.getCommands();
@@ -341,8 +340,8 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 			skip |= Option.RCPT_REJ.getCode();
 		}
 		// for transparence reasons we never set HDR_LEADSPC
-		int version = p.getVersion();
-		if (version < 2 || version > VERSION) {
+		int vers = p.getVersion();
+		if (vers < 2 || vers > VERSION) {
 			p.setVersion(VERSION);
 		}
 		p.setModificationMask(Modification.getCode(mods2handle));
@@ -356,7 +355,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
  	 * @return a possibly empty list of filters, which need to be run
  	 */
 	private ArrayList<MailFilter> needTask(Type cmd) {
-		ArrayList<MailFilter> f = new ArrayList<MailFilter>();
+		ArrayList<MailFilter> f = new ArrayList<>();
 		if (filters.isEmpty()) {
 			return f;
 		}
@@ -408,7 +407,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 				}
 			}
 			connectionMacros.clear();
-			try { channel.close(); } catch (IOException e) { 
+			try { channel.close(); } catch (@SuppressWarnings("unused") IOException e) {
 				/* ignore */ 
 			}
 			log.debug("channel closed");
@@ -522,17 +521,17 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 	/**
 	 * Handle Packets
 	 * @param cmd	the command name
-	 * @param data	the data (payload) of the command package received
+	 * @param payload	the data of the command package received
 	 * @return {@code true} if last packet has been sent, i.e. connection 
 	 * 		can be closed (which usually happens for {@code QUIT*} commands, 
 	 * 		only).
 	 * @throws IOException 
 	 */
-	private boolean handlePaket(Type cmd, ByteBuffer data) throws IOException {
+	private boolean handlePaket(Type cmd, ByteBuffer payload) throws IOException {
 		ArrayList<MailFilter> todo = needTask(cmd);
 		switch (cmd) {
 			case MACRO:
-				final MacroPacket mp = new MacroPacket(data);
+				final MacroPacket mp = new MacroPacket(payload);
 				allMacros.putAll(mp.getMacros());
 				lastMacros.putAll(mp.getMacros()); // collect for HELO
 				if (todo.size() > 0) {
@@ -553,7 +552,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 				connectionMacros.clear();
 				connectionMacros.putAll(allMacros);
 				if (todo.size() > 0) {
-					final ConnectPacket cp = new ConnectPacket(data);
+					final ConnectPacket cp = new ConnectPacket(payload);
 					for (MailFilter f : todo) {
 						try {
 							Packet p = f.doConnect(cp.getHostname(), 
@@ -573,7 +572,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 			case HELO:
 				connectionMacros.putAll(lastMacros);
 				if (todo.size() > 0) {
-					final HeloPacket lp = new HeloPacket(data);
+					final HeloPacket lp = new HeloPacket(payload);
 					for (MailFilter f : todo) {
 						try {
 							Packet p = f.doHelo(lp.getDomain(), allMacros);
@@ -590,7 +589,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 				break;
 			case MAIL:
 				lastMacros.clear();
-				final MailFromPacket fp = new MailFromPacket(data);
+				final MailFromPacket fp = new MailFromPacket(payload);
 				if (todo.size() > 0) {
 					for (MailFilter f : todo) {
 						try {
@@ -608,7 +607,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 				break;
 			case RCPT:
 				lastMacros.clear();
-				final RecipientToPacket tp = new RecipientToPacket(data);
+				final RecipientToPacket tp = new RecipientToPacket(payload);
 				if (todo.size() > 0) {
 					for (MailFilter f : todo) {
 						try {
@@ -651,7 +650,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 				break;
 			case HEADER:
 				lastMacros.clear();
-				HeaderPacket hp = new HeaderPacket(data);
+				HeaderPacket hp = new HeaderPacket(payload);
 				headers.add(new Header(hp.getName(), hp.getValue()));
 				if (todo.size() > 0) {
 					for (MailFilter f : todo) {
@@ -688,7 +687,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 				break;
 			case BODY:
 				lastMacros.clear();
-				final BodyPacket bp = new BodyPacket(data);
+				final BodyPacket bp = new BodyPacket(payload);
 				if (todo.size() > 0) {
 					// don't re-assemble, if nobody needs it
 					if (!(assembleMessage4.isEmpty() 
@@ -720,7 +719,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 				break;
 			case BODYEOB:
 				lastMacros.clear();
-				boolean quarantined = false;
+				boolean quarantineSent = false;
 				if (addVersion) {
 					send(new AddHeaderPacket("X-Milter", version), cmd);
 				}
@@ -732,10 +731,10 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 					for (Packet p : toSend) {
 						if (p.getType() == de.ovgu.cs.milter4j.reply.Type.QUARANTINE)
 						{
-							if (quarantined) {
+							if (quarantineSent) {
 								continue;
 							}
-							quarantined = true;
+							quarantineSent = true;
 						}
 						send(p, cmd);
 					}
@@ -773,7 +772,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 			case UNKNOWN:
 				lastMacros.clear();
 				if (todo.size() > 0) {
-					final UnknownCmdPacket up = new UnknownCmdPacket(data);
+					final UnknownCmdPacket up = new UnknownCmdPacket(payload);
 					for (MailFilter f : todo) {
 						try {
 							Packet p = f.doBadCommand(up.getCmd(), allMacros);
@@ -789,7 +788,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 				send(new ContinuePacket(), cmd);
 				break;
 			case OPTNEG:
-				final NegotiationPacket rp = new NegotiationPacket(data);
+				final NegotiationPacket rp = new NegotiationPacket(payload);
 				try {
 					stats.increment(GLOB_STAT_NAME, packageType, 
 							de.ovgu.cs.milter4j.reply.Type.CONTINUE);
@@ -917,7 +916,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 					&& channel.isOpen() && data != null
 					? handlePaket(packageType, data) 
 					: true;
-			} catch (AsynchronousCloseException e1) {
+			} catch (@SuppressWarnings("unused") AsynchronousCloseException e1) {
 				// that's ok - may occure, if shutdown gets called
 			} catch (Exception e) {
 				if (channel != null) {

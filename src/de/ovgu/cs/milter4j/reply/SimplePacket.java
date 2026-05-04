@@ -31,7 +31,6 @@ class SimplePacket
 	/**
 	 * {@inheritDoc}
 	 */
-	@SuppressWarnings("unused")
 	@Override
 	public byte[] getData() throws IOException {
 		return null;

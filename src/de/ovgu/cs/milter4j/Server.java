@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.lang.reflect.Constructor;
 import java.net.InetSocketAddress;
+import java.net.Socket;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.ServerSocketChannel;
@@ -72,7 +73,7 @@ public class Server extends Thread
 			return server 
 				? new ObjectName("Milter4J:type=Server")
 				: new ObjectName("Milter4J:type=ExecutorService");
-		} catch (Exception e) {
+		} catch (@SuppressWarnings("unused") Exception e) {
 			// ignore
 		}
 		return null;
@@ -89,7 +90,7 @@ public class Server extends Thread
 		cfg = new Configuration(configFile);
 		cfg.add(this);
 		executor = new FutureTaskExecutor(3, cfg.getMaxWorkers(), 
-			5L, TimeUnit.MINUTES, new SynchronousQueue<Runnable>());
+			5L, TimeUnit.MINUTES, new SynchronousQueue<>());
 		stats = new StatsCollector(cfg.getSampleRates(), cfg.getSamples());
 		MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
 		try {
@@ -118,7 +119,7 @@ public class Server extends Thread
 		lock.lock();
 		try {
 			if (workers == null) {
-				workers = new ArrayList<Worker>();
+				workers = new ArrayList<>();
 			} else {
 				int stop = workerOffset;
 				int size = workers.size();
@@ -142,7 +143,7 @@ public class Server extends Thread
 				}
 			}
 			// since thread per worker, make sure, that each one has its own instance
-			ArrayList<MailFilter> newFilters  = new ArrayList<MailFilter>();
+			ArrayList<MailFilter> newFilters  = new ArrayList<>();
 			for (MailFilter mf : filters) {
 				newFilters.add(mf.getInstance());
 			}
@@ -172,10 +173,8 @@ public class Server extends Thread
 				log.warn("socket unavailable - terminating");
 				return;
 			}
-			SocketChannel sc = null;
 			Worker w = null;
-			try {
-				sc = socketChannel.accept();
+			try (SocketChannel sc = socketChannel.accept()) {
 				if (shutdown) {
 					return;
 				}
@@ -188,7 +187,6 @@ public class Server extends Thread
 					log.debug("Worker {} registered for accept()", 
 						w.getName());
 				}
-				sc = null; // indicate, everything is ok
 			} catch (RejectedExecutionException e) {
 				log.warn("Thread Pool execution limit reached: " 
 					+ executor.getActiveCount() + "/" 
@@ -212,9 +210,6 @@ public class Server extends Thread
 					}
 				}
 			}
-			if (sc != null && sc.isOpen()) {
-				try { sc.close(); } catch (Exception e1) { /* ignore */ }
-			}
 		}
 	}
 
@@ -236,7 +231,7 @@ public class Server extends Thread
 		try {
 			ssc = ServerSocketChannel.open();
 			ssc.configureBlocking(true);
-			ssc.socket().bind(addr);
+			ssc.bind(addr);
 			socketChannel = ssc;
 		} catch (IOException e) {
 			log.warn(e.getLocalizedMessage());
@@ -244,7 +239,7 @@ public class Server extends Thread
 				log.debug("initSocket", e);
 			}
 			if (ssc != null) {
-				try { ssc.close(); } catch (Exception x) { /* ignore */ }
+				try { ssc.close(); } catch (@SuppressWarnings("unused") Exception x) { /* ignore */ }
 			}
 		}
 	}
@@ -260,7 +255,7 @@ public class Server extends Thread
 				}
 				workers.clear();
 			}
-			ArrayList<MailFilter> newFilters = new ArrayList<MailFilter>();
+			ArrayList<MailFilter> newFilters = new ArrayList<>();
 			MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
 			stats.removeAll(mbs);
 			String[] cff = cfg.getFilters();
@@ -347,16 +342,15 @@ public class Server extends Thread
 		Runnable r = new Runnable() {
 			@Override
 			public void run() {
-				ServerSocketChannel ssc = null;
-				try {
-					ssc = ServerSocketChannel.open();
+				try (ServerSocketChannel ssc = ServerSocketChannel.open()) {
 					ssc.configureBlocking(true);
-					ssc.socket().bind(sa);
+					ssc.bind(sa);
 					while (!shutdown) {
-						SocketChannel sc = ssc.accept();
-						try {
-							sc.socket().setKeepAlive(false);
-							sc.socket().setSoTimeout(3 * 1000);
+						try (SocketChannel sc = ssc.accept();
+							Socket scs = sc.socket()
+						) {
+							scs.setKeepAlive(false);
+							scs.setSoTimeout(3 * 1000);
 							ByteBuffer buf = ByteBuffer.allocate(8);
 							int res = sc.read(buf);
 							if (res == 8) {
@@ -365,10 +359,8 @@ public class Server extends Thread
 									break;
 								}
 							}
-						} catch (Exception e) {
+						} catch (@SuppressWarnings("unused") Exception e) {
 							/** ignore */
-						} finally {
-							try { sc.close(); } catch (Exception e) { /* */ } 
 						}
 					}
 				} catch (IOException e) {
@@ -377,10 +369,6 @@ public class Server extends Thread
 						if (log.isDebugEnabled()) {
 							log.debug("configureShutdown", e);
 						}
-					}
-				} finally {
-					if (ssc != null) {
-						try { ssc.close(); } catch (Exception e) { /* ignore */ }
 					}
 				}
 				shutdownListener = null;
@@ -482,7 +470,7 @@ public class Server extends Thread
 	 */
 	@Override
 	public String getVersion() {
-		return new Version().getVersionInfo();
+		return Version.getVersionInfo();
 	}
 	/**
 	 * {@inheritDoc}
@@ -525,12 +513,12 @@ public class Server extends Thread
 		}
 		try {
 			mbs.unregisterMBean(getMBeanName(false));
-		} catch (Exception e) {
+		} catch (@SuppressWarnings("unused") Exception e) {
 			// ignore
 		}
 		try {
 			mbs.unregisterMBean(getMBeanName(true));
-		} catch (Exception e) {
+		} catch (@SuppressWarnings("unused") Exception e) {
 			// ignore
 		}
 		log.info("done.");
@@ -555,19 +543,13 @@ public class Server extends Thread
 		if (shutdown) {
 			Configuration cfg = new Configuration(config);
 			InetSocketAddress sa = cfg.getShutdownAddress();
-			SocketChannel sc = null;
-			try {
-				sc = SocketChannel.open(sa);
+			try (SocketChannel sc = SocketChannel.open(sa)) {
 				sc.write(ByteBuffer.wrap("shutdown".getBytes()));
 				log.info("shutdown command sent");
 			} catch (IOException e) {
 				log.warn(e.getLocalizedMessage());
 				if (log.isDebugEnabled()) {
 					log.debug("main", e);
-				}
-			} finally {
-				if (sc != null) {
-					try { sc.close(); } catch (Exception x) { /* ignore */ }
 				}
 			}
 		} else {

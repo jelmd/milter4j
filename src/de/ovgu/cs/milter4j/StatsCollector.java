@@ -111,7 +111,7 @@ public class StatsCollector {
 		limit |= (limit >>>  4);
 		limit |= (limit >>>  8);
 		limit |= (limit >>> 16);
-		stats = new HashMap<String, FilterStats>();
+		stats = new HashMap<>();
 		startTime = System.currentTimeMillis();
 		if (collectionTimes != null) {
 			Arrays.sort(collectionTimes);
@@ -127,16 +127,16 @@ public class StatsCollector {
 				collectionTimes = new int[] { Integer.MAX_VALUE };
 			}	
 			intervall = new long[intervalls];
-			history = new ArrayList<ArrayDeque<Long>>(intervalls);
-			lastTime = new ArrayList<ArrayDeque<Long>>(intervalls);
-			Long now = new Long(System.currentTimeMillis());
+			history = new ArrayList<>(intervalls);
+			lastTime = new ArrayList<>(intervalls);
+			Long now = Long.valueOf(System.currentTimeMillis());
 			Long zero = Long.valueOf(0);
 			for (int i=0; i < intervalls; i++, count++) {
 				intervall[i] = collectionTimes[count] * 1000;
-				ArrayDeque<Long> q = new ArrayDeque<Long>(limit);
+				ArrayDeque<Long> q = new ArrayDeque<>(limit);
 				history.add(q);
 				q.push(zero);
-				ArrayDeque<Long> q2 = new ArrayDeque<Long>(limit);
+				ArrayDeque<Long> q2 = new ArrayDeque<>(limit);
 				lastTime.add(q2);
 				q2.push(now);
 			}
@@ -153,8 +153,8 @@ public class StatsCollector {
 	
 	void doStats(boolean all) {
 		long now = System.currentTimeMillis();
-		Long cons = new Long(connections);
-		Long nowL = new Long(now);
+		Long cons = Long.valueOf(connections);
+		Long nowL = Long.valueOf(now);
 		// always need to update at least two queues at a time in sync
 		lock.lock();
 		try {

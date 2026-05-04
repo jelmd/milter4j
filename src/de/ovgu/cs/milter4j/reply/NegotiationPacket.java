@@ -127,7 +127,7 @@ public class NegotiationPacket
 			}
 			return;
 		}
-		HashSet<String> res = new HashSet<String>();
+		HashSet<String> res = new HashSet<>();
 		for (String t : macros) {
 			if (t == null) {
 				continue;
@@ -140,7 +140,7 @@ public class NegotiationPacket
 		}
 		if (res.size() > 0) {
 			if (this.macros == null) {
-				this.macros = new HashMap<MacroStage, HashSet<String>>(7);
+				this.macros = new HashMap<>(7);
 			}
 			this.macros.put(s, res);
 		}

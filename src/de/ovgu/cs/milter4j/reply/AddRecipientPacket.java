@@ -59,7 +59,7 @@ public class AddRecipientPacket
 		if (this.recipient.length() == 0) {
 			throw new IllegalArgumentException("empty recipient not allowed");
 		}
-		ArrayList<String> l = new ArrayList<String>(5);
+		ArrayList<String> l = new ArrayList<>(5);
 		if (args != null) {
 			for (String m : args) {
 				if (m != null) {

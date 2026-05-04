@@ -48,7 +48,6 @@ public class ReplaceBodyPacket
 	/**
 	 * {@inheritDoc}
 	 */
-	@SuppressWarnings("unused")
 	@Override
 	public byte[] getData() throws IOException {
 		return data;

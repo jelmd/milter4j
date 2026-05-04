@@ -124,86 +124,87 @@ public class Simulator {
 			log.info("No mbox file to read - nothing to do");
 			return;
 		}
-		FileInputStream ir = new FileInputStream(file);
-		StringBuilder buf = new StringBuilder(64);
-		int c = 0;
-		while((c = ir.read()) != -1) {
-			if (c == '\n') {
-				break;
+		try (FileInputStream ir = new FileInputStream(file)) {
+			StringBuilder buf = new StringBuilder(64);
+			int c = 0;
+			while((c = ir.read()) != -1) {
+				if (c == '\n') {
+					break;
+				}
+				buf.append((char) c);
 			}
-			buf.append((char) c);
-		}
-		if (ir.available() < 1) {
-			throw new StreamCorruptedException("Not an mbox stream");
-		}
-		ir.mark(4096);
-		if (buf.indexOf("From ") == -1) {
-			throw new StreamCorruptedException("Not an mbox stream");
-		}
-		HashMap<String,String> macros = new HashMap<String,String>(0);
-		if (cmds.contains(Type.MAIL)) {
-			Packet p = filter.doMailFrom(new String[] { 
-				buf.substring(5, buf.indexOf(" ", 6)) 
-			}, macros);
-			log.info("RESULT: {}", String.valueOf(p));
-		}
-		Mail msg = new Mail(ir);
-		Enumeration<?> headers = msg.getAllHeaders();
-		ArrayList<Header> localHeaders = new ArrayList<Header>();
-		if (cmds.contains(Type.HEADER)) {
-			while (headers.hasMoreElements()) {
-				Header h = (Header) headers.nextElement();
-				localHeaders.add(h);
-				Packet p = filter.doHeader(h.getName(), h.getValue(), macros);
+			if (ir.available() < 1) {
+				throw new StreamCorruptedException("Not an mbox stream");
+			}
+			ir.mark(4096);
+			if (buf.indexOf("From ") == -1) {
+				throw new StreamCorruptedException("Not an mbox stream");
+			}
+			HashMap<String,String> macros = new HashMap<>(0);
+			if (cmds.contains(Type.MAIL)) {
+				Packet p = filter.doMailFrom(new String[] { 
+					buf.substring(5, buf.indexOf(" ", 6)) 
+				}, macros);
 				log.info("RESULT: {}", String.valueOf(p));
 			}
-		}
-		if (cmds.contains(Type.EOH)) {
-			Packet p = filter.doEndOfHeader(localHeaders, macros);
-			log.info("RESULT: {}", String.valueOf(p));
-		}
-		if (cmds.contains(Type.DATA)) {
-			Packet p = filter.doData(macros);
-			log.info("RESULT: {}", String.valueOf(p));
-		}
-		if (cmds.contains(Type.BODY)) {
-			byte[] data = msg.getContentRaw();
-			int count = data.length / chunkSize;
-			int offset = 0;
-			byte[] chunk = new byte[chunkSize];
-			for (;count > 0;count--) {
-				System.arraycopy(data, offset, chunk, 0, chunkSize);
-				offset += chunkSize;
+			Mail msg = new Mail(ir);
+			Enumeration<?> headers = msg.getAllHeaders();
+			ArrayList<Header> localHeaders = new ArrayList<>();
+			if (cmds.contains(Type.HEADER)) {
+				while (headers.hasMoreElements()) {
+					Header h = (Header) headers.nextElement();
+					localHeaders.add(h);
+					Packet p = filter.doHeader(h.getName(), h.getValue(), macros);
+					log.info("RESULT: {}", String.valueOf(p));
+				}
+			}
+			if (cmds.contains(Type.EOH)) {
+				Packet p = filter.doEndOfHeader(localHeaders, macros);
+				log.info("RESULT: {}", String.valueOf(p));
+			}
+			if (cmds.contains(Type.DATA)) {
+				Packet p = filter.doData(macros);
+				log.info("RESULT: {}", String.valueOf(p));
+			}
+			if (cmds.contains(Type.BODY)) {
+				byte[] data = msg.getContentRaw();
+				int count = data.length / chunkSize;
+				int offset = 0;
+				byte[] chunk = new byte[chunkSize];
+				for (;count > 0;count--) {
+					System.arraycopy(data, offset, chunk, 0, chunkSize);
+					offset += chunkSize;
+					Packet p = filter.doBody(chunk, macros);
+					log.info("RESULT: {}", String.valueOf(p));
+				}
+				chunk = new byte[data.length-offset];
+				System.arraycopy(data, offset, chunk, 0, chunk.length);
 				Packet p = filter.doBody(chunk, macros);
 				log.info("RESULT: {}", String.valueOf(p));
 			}
-			chunk = new byte[data.length-offset];
-			System.arraycopy(data, offset, chunk, 0, chunk.length);
-			Packet p = filter.doBody(chunk, macros);
-			log.info("RESULT: {}", String.valueOf(p));
-		}
-		if (cmds.contains(Type.BODYEOB)) {
-//			Object o = msg.getContent();
-//			if (o instanceof MimeMultipart) {
-//				MimeMultipart mp = (MimeMultipart) o;
-//				int count = mp.getCount();
-//				for (int i=count-1; i >= 0; i--) {
-//					BodyPart bp = mp.getBodyPart(i);
-//					bp.getLineCount();
-//				}
-//			}
-			List<Packet> p = filter.reassembleMail()
-				? filter.doEndOfMail(localHeaders, macros, msg)
-				: filter.doEndOfMail(localHeaders, macros, null);
-			if (p == null) {
-				log.info("RESULT: null");
-			} else {
-				for (Packet t : p) {
-					log.info("RESULT: {}", String.valueOf(t));
+			if (cmds.contains(Type.BODYEOB)) {
+	//			Object o = msg.getContent();
+	//			if (o instanceof MimeMultipart) {
+	//				MimeMultipart mp = (MimeMultipart) o;
+	//				int count = mp.getCount();
+	//				for (int i=count-1; i >= 0; i--) {
+	//					BodyPart bp = mp.getBodyPart(i);
+	//					bp.getLineCount();
+	//				}
+	//			}
+				List<Packet> p = filter.reassembleMail()
+					? filter.doEndOfMail(localHeaders, macros, msg)
+					: filter.doEndOfMail(localHeaders, macros, null);
+				if (p == null) {
+					log.info("RESULT: null");
+				} else {
+					for (Packet t : p) {
+						log.info("RESULT: {}", String.valueOf(t));
+					}
 				}
 			}
+			filter.doQuit();
 		}
-		filter.doQuit();
 	}
 	
 	/**

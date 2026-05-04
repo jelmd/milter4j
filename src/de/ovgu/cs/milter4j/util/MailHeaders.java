@@ -30,7 +30,7 @@ public class MailHeaders
 	 * @param headers	headers to assimilate
 	 */
 	public MailHeaders(List<Header> headers) {
-		this.headers = new ArrayList<InternetHeader>(8);
+		this.headers = new ArrayList<>(8);
 		if (headers == null) {
 			return;
 		}
