@@ -235,6 +235,7 @@ public class RequestDumper
 	public List<Packet> doEndOfMail(List<Header> headers, 
 		HashMap<String,String> macros, Mail msg) 
 	{
+		log.info("Received EOM");
 		StringBuilder buf = new StringBuilder("doEndOfMail:").append(eol);
 		if (msg != null) {
 			try {

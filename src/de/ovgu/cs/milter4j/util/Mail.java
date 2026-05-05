@@ -38,6 +38,7 @@ public class Mail
 	 */
 	public Mail(List<Header> headers, byte[] content) {
 		super((Session) null);
+		log.debug("new Mail.super(null)");
 		this.headers = new MailHeaders(headers);
 		this.content = content;
 		this.modified = false;

@@ -284,6 +284,9 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 				stats.increment(GLOB_STAT_NAME, cmd, p.getType());
 			}
 			p.send(channel);
+			log.debug("done.");
+		} else if (log.isDebugEnabled()) {
+			log.debug("Sending paket {} to a null/closed channel", p);
 		}
 	}
 
@@ -742,14 +745,21 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 					toSend.clear();
 				}
 				if (todo.size() > 0) {
+					log.debug("todo msg");
 					Mail msg = null;
+					log.debug("a: {}", assembleMessage4.isEmpty());
+					log.debug("b: {}", body);
+					log.debug("c: {}", Collections.disjoint(todo, assembleMessage4));
 					if (!(assembleMessage4.isEmpty() || body == null
 						|| Collections.disjoint(todo, assembleMessage4))) 
 					{
+						log.debug("todo msg2.1");
 						msg = new Mail(headers, body.toByteArray());
 						body = null;
 					}
+					log.debug("todo msg2");
 					for (MailFilter f : todo) {
+						log.debug("todo filter");
 						try {
 							List<Packet> p = f.doEndOfMail(headers, allMacros, msg);
 							if (p != null) {
@@ -767,6 +777,7 @@ public class Worker implements Comparable<Worker>, Callable<Object> {
 							log.debug("handlePaket", e);
 						}
 					}
+					log.debug("todo done");
 				}
 				send(new ContinuePacket(), cmd);
 				break;
